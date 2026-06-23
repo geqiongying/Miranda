@@ -52,6 +52,45 @@ JSON 示例：
 
 > 注意：公开行情接口可能存在延迟、限流或临时不可用。这个工具只用于观察和复盘，不构成投资建议，也不会执行任何交易。
 
+## 本地股票观察面板
+
+`stock_dashboard.py` 会启动一个本地网页面板，用浏览器查看当前持仓：
+
+- 组合市值、组合成本、组合浮盈亏和收益率
+- 每只股票的现价、涨跌幅、持仓市值、仓位占比
+- 风险/观察信号标签
+- 手动刷新和每 60 秒自动刷新
+
+运行：
+
+```bash
+python3 stock_dashboard.py
+```
+
+然后打开：
+
+```text
+http://127.0.0.1:8765
+```
+
+也可以使用自定义持仓文件：
+
+```bash
+python3 stock_dashboard.py --holdings holdings.csv
+```
+
+快速输出一次 JSON 快照：
+
+```bash
+python3 stock_dashboard.py --once
+```
+
+如需修改端口：
+
+```bash
+python3 stock_dashboard.py --port 9000
+```
+
 ## A 股观察股筛选模型
 
 `steady_stock_screener.py` 会从公开行情列表接口拉取 A 股基础行情和估值字段，并按不同观察周期筛选“值得进一步研究的观察标的”。
