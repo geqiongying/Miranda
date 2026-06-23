@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""A-share steady observation screener.
+"""A-share observation screener with short, mid, and long profiles.
 
 This screener pulls quote and basic valuation fields from Eastmoney's public
-quote list endpoint, applies conservative filters, and ranks candidates for
+quote list endpoint, applies profile-specific filters, and ranks candidates for
 further manual research. It does not produce buy/sell recommendations.
 """
 
@@ -46,6 +46,72 @@ class ScoredStock:
     stock: Stock
     score: int
     signals: list[str]
+
+
+@dataclass(frozen=True)
+class ScreeningProfile:
+    key: str
+    title: str
+    holding_period: str
+    description: str
+    min_market_cap: float
+    max_pe_ttm: float
+    max_pb: float
+    min_change_percent: float
+    max_abs_change_percent: float
+    min_turnover_rate: float
+    max_turnover_rate: float
+    min_volume_ratio: float
+    max_volume_ratio: float
+
+
+PROFILES = {
+    "short": ScreeningProfile(
+        key="short",
+        title="短线趋势观察版",
+        holding_period="1-4周",
+        description="偏向已有资金关注、当日趋势较强但尚未极端放量的标的。",
+        min_market_cap=10_000_000_000,
+        max_pe_ttm=80,
+        max_pb=8,
+        min_change_percent=0.5,
+        max_abs_change_percent=7,
+        min_turnover_rate=1,
+        max_turnover_rate=12,
+        min_volume_ratio=1,
+        max_volume_ratio=3.5,
+    ),
+    "mid": ScreeningProfile(
+        key="mid",
+        title="中线稳健观察版",
+        holding_period="3-12个月",
+        description="偏向大中市值、估值不过热、波动和成交不过度异常的标的。",
+        min_market_cap=30_000_000_000,
+        max_pe_ttm=35,
+        max_pb=4,
+        min_change_percent=-7,
+        max_abs_change_percent=7,
+        min_turnover_rate=0,
+        max_turnover_rate=8,
+        min_volume_ratio=0,
+        max_volume_ratio=3,
+    ),
+    "long": ScreeningProfile(
+        key="long",
+        title="长期分红价值观察版",
+        holding_period="1-3年以上",
+        description="偏向超大/大市值、低估值、低波动、低换手的成熟公司。",
+        min_market_cap=50_000_000_000,
+        max_pe_ttm=25,
+        max_pb=2.5,
+        min_change_percent=-5,
+        max_abs_change_percent=5,
+        min_turnover_rate=0,
+        max_turnover_rate=5,
+        min_volume_ratio=0,
+        max_volume_ratio=2.5,
+    ),
+}
 
 
 def fetch_a_share_universe(
@@ -140,9 +206,7 @@ def as_float(value: Any) -> float:
 def passes_conservative_filters(
     stock: Stock,
     *,
-    min_market_cap: float,
-    max_pe_ttm: float,
-    max_pb: float,
+    profile: ScreeningProfile,
     excluded_codes: set[str],
 ) -> bool:
     if stock.code in excluded_codes:
@@ -151,22 +215,36 @@ def passes_conservative_filters(
         return False
     if any(marker in stock.name.upper() for marker in ("ST", "退")):
         return False
-    if stock.total_market_cap < min_market_cap:
+    if stock.total_market_cap < profile.min_market_cap:
         return False
-    if stock.pe_ttm <= 0 or stock.pe_ttm > max_pe_ttm:
+    if stock.pe_ttm <= 0 or stock.pe_ttm > profile.max_pe_ttm:
         return False
-    if stock.pb <= 0 or stock.pb > max_pb:
+    if stock.pb <= 0 or stock.pb > profile.max_pb:
         return False
-    if abs(stock.change_percent) > 7:
+    if stock.change_percent < profile.min_change_percent:
         return False
-    if stock.turnover_rate <= 0 or stock.turnover_rate > 8:
+    if abs(stock.change_percent) > profile.max_abs_change_percent:
         return False
-    if stock.volume_ratio <= 0 or stock.volume_ratio > 3:
+    if stock.turnover_rate <= profile.min_turnover_rate:
+        return False
+    if stock.turnover_rate > profile.max_turnover_rate:
+        return False
+    if stock.volume_ratio <= profile.min_volume_ratio:
+        return False
+    if stock.volume_ratio > profile.max_volume_ratio:
         return False
     return True
 
 
-def score_stock(stock: Stock) -> ScoredStock:
+def score_stock(stock: Stock, profile: ScreeningProfile) -> ScoredStock:
+    if profile.key == "short":
+        return score_short_term(stock)
+    if profile.key == "long":
+        return score_long_term(stock)
+    return score_mid_term(stock)
+
+
+def score_mid_term(stock: Stock) -> ScoredStock:
     score = 0
     signals: list[str] = []
 
@@ -238,12 +316,140 @@ def score_stock(stock: Stock) -> ScoredStock:
     return ScoredStock(stock=stock, score=score, signals=signals)
 
 
+def score_short_term(stock: Stock) -> ScoredStock:
+    score = 0
+    signals: list[str] = []
+
+    market_cap_100m = stock.total_market_cap / 100_000_000
+    if market_cap_100m >= 500:
+        score += 16
+        signals.append("市值流动性较好")
+    elif market_cap_100m >= 200:
+        score += 13
+        signals.append("中大市值")
+    else:
+        score += 9
+        signals.append("市值达标")
+
+    if 1 <= stock.change_percent <= 4:
+        score += 25
+        signals.append("趋势温和走强")
+    elif 4 < stock.change_percent <= 6:
+        score += 18
+        signals.append("趋势较强，注意追高")
+    else:
+        score += 12
+        signals.append("趋势刚启动")
+
+    if 1.1 <= stock.volume_ratio <= 2:
+        score += 22
+        signals.append("量能放大适中")
+    elif 2 < stock.volume_ratio <= 3:
+        score += 15
+        signals.append("量能偏强")
+    else:
+        score += 10
+        signals.append("量能刚放大")
+
+    if 2 <= stock.turnover_rate <= 6:
+        score += 18
+        signals.append("换手活跃")
+    elif stock.turnover_rate <= 10:
+        score += 12
+        signals.append("换手偏高")
+    else:
+        score += 7
+        signals.append("换手过热")
+
+    if 0 < stock.pe_ttm <= 45:
+        score += 12
+        signals.append("估值未过热")
+    elif stock.pe_ttm <= 65:
+        score += 8
+        signals.append("估值偏高")
+    else:
+        score += 4
+        signals.append("估值较高")
+
+    if 0 < stock.pb <= 5:
+        score += 7
+        signals.append("PB可接受")
+    else:
+        score += 4
+        signals.append("PB偏高")
+
+    return ScoredStock(stock=stock, score=score, signals=signals)
+
+
+def score_long_term(stock: Stock) -> ScoredStock:
+    score = 0
+    signals: list[str] = []
+
+    market_cap_100m = stock.total_market_cap / 100_000_000
+    if market_cap_100m >= 2000:
+        score += 25
+        signals.append("超大市值")
+    elif market_cap_100m >= 1000:
+        score += 22
+        signals.append("大市值")
+    else:
+        score += 17
+        signals.append("市值达标")
+
+    if 6 <= stock.pe_ttm <= 18:
+        score += 24
+        signals.append("PE偏价值")
+    elif 0 < stock.pe_ttm < 6:
+        score += 16
+        signals.append("PE很低，需查周期性")
+    else:
+        score += 12
+        signals.append("PE可接受")
+
+    if 0 < stock.pb <= 1.5:
+        score += 20
+        signals.append("PB较低")
+    elif stock.pb <= 2:
+        score += 15
+        signals.append("PB较稳")
+    else:
+        score += 10
+        signals.append("PB可接受")
+
+    if abs(stock.change_percent) <= 1.5:
+        score += 13
+        signals.append("当日波动低")
+    elif abs(stock.change_percent) <= 3:
+        score += 9
+        signals.append("当日波动可控")
+    else:
+        score += 5
+        signals.append("当日波动偏大")
+
+    if stock.turnover_rate <= 1.5:
+        score += 10
+        signals.append("换手低")
+    elif stock.turnover_rate <= 3:
+        score += 7
+        signals.append("换手适中")
+    else:
+        score += 4
+        signals.append("换手偏高")
+
+    if stock.volume_ratio <= 1.5:
+        score += 8
+        signals.append("量比平稳")
+    else:
+        score += 5
+        signals.append("量比略高")
+
+    return ScoredStock(stock=stock, score=score, signals=signals)
+
+
 def rank_stocks(
     stocks: list[Stock],
     *,
-    min_market_cap: float,
-    max_pe_ttm: float,
-    max_pb: float,
+    profile: ScreeningProfile,
     excluded_codes: set[str],
 ) -> list[ScoredStock]:
     filtered = [
@@ -251,14 +457,12 @@ def rank_stocks(
         for stock in stocks
         if passes_conservative_filters(
             stock,
-            min_market_cap=min_market_cap,
-            max_pe_ttm=max_pe_ttm,
-            max_pb=max_pb,
+            profile=profile,
             excluded_codes=excluded_codes,
         )
     ]
     return sorted(
-        (score_stock(stock) for stock in filtered),
+        (score_stock(stock, profile) for stock in filtered),
         key=lambda item: (
             item.score,
             item.stock.total_market_cap,
@@ -268,7 +472,12 @@ def rank_stocks(
     )
 
 
-def print_report(items: list[ScoredStock], limit: int) -> None:
+def print_report(items: list[ScoredStock], limit: int, profile: ScreeningProfile) -> None:
+    print(f"模型: {profile.title}")
+    print(f"观察周期: {profile.holding_period}")
+    print(f"模型说明: {profile.description}")
+    print()
+
     rows = []
     for item in items[:limit]:
         stock = item.stock
@@ -293,7 +502,7 @@ def print_report(items: list[ScoredStock], limit: int) -> None:
         rows,
     )
     print()
-    print("说明: 分数越高表示越符合本模型的稳健观察条件，但仍需继续核对财报、行业景气度和公告风险。")
+    print("说明: 分数越高表示越符合本模型的观察条件，但仍需继续核对财报、行业景气度和公告风险。")
 
 
 def print_table(headers: list[str], rows: list[list[str]]) -> None:
@@ -323,17 +532,43 @@ def parse_excluded_codes(raw: str | None) -> set[str]:
     return {item.strip() for item in raw.split(",") if item.strip()}
 
 
+def profile_from_args(args: argparse.Namespace) -> ScreeningProfile:
+    base = PROFILES[args.profile]
+    return ScreeningProfile(
+        key=base.key,
+        title=base.title,
+        holding_period=base.holding_period,
+        description=base.description,
+        min_market_cap=args.min_market_cap
+        if args.min_market_cap is not None
+        else base.min_market_cap,
+        max_pe_ttm=args.max_pe_ttm if args.max_pe_ttm is not None else base.max_pe_ttm,
+        max_pb=args.max_pb if args.max_pb is not None else base.max_pb,
+        min_change_percent=base.min_change_percent,
+        max_abs_change_percent=base.max_abs_change_percent,
+        min_turnover_rate=base.min_turnover_rate,
+        max_turnover_rate=base.max_turnover_rate,
+        min_volume_ratio=base.min_volume_ratio,
+        max_volume_ratio=base.max_volume_ratio,
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Screen A-share stocks for steady observation.")
+    parser.add_argument(
+        "--profile",
+        choices=sorted(PROFILES),
+        default="mid",
+        help="Screening profile: short, mid, or long. Default: mid.",
+    )
     parser.add_argument("--limit", type=int, default=20, help="Number of candidates to display.")
     parser.add_argument(
         "--min-market-cap",
         type=float,
-        default=30_000_000_000,
-        help="Minimum total market cap in yuan. Default: 30,000,000,000.",
+        help="Override the profile's minimum total market cap in yuan.",
     )
-    parser.add_argument("--max-pe-ttm", type=float, default=35, help="Maximum PE(TTM).")
-    parser.add_argument("--max-pb", type=float, default=4, help="Maximum PB.")
+    parser.add_argument("--max-pe-ttm", type=float, help="Override the profile's maximum PE(TTM).")
+    parser.add_argument("--max-pb", type=float, help="Override the profile's maximum PB.")
     parser.add_argument(
         "--max-pages",
         type=int,
@@ -356,6 +591,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    profile = profile_from_args(args)
     try:
         stocks = fetch_a_share_universe(max_pages=max(args.max_pages, 1))
     except RuntimeError as exc:
@@ -364,9 +600,7 @@ def main() -> int:
 
     ranked = rank_stocks(
         stocks,
-        min_market_cap=args.min_market_cap,
-        max_pe_ttm=args.max_pe_ttm,
-        max_pb=args.max_pb,
+        profile=profile,
         excluded_codes=parse_excluded_codes(args.exclude),
     )
 
@@ -374,7 +608,7 @@ def main() -> int:
         print("No stocks matched the current conservative filters.")
         return 0
 
-    print_report(ranked, max(args.limit, 1))
+    print_report(ranked, max(args.limit, 1), profile)
     return 0
 
 
