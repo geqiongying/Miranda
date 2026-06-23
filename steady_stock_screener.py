@@ -532,8 +532,7 @@ def parse_excluded_codes(raw: str | None) -> set[str]:
     return {item.strip() for item in raw.split(",") if item.strip()}
 
 
-def profile_from_args(args: argparse.Namespace) -> ScreeningProfile:
-    base = PROFILES[args.profile]
+def apply_profile_overrides(base: ScreeningProfile, args: argparse.Namespace) -> ScreeningProfile:
     return ScreeningProfile(
         key=base.key,
         title=base.title,
@@ -553,13 +552,17 @@ def profile_from_args(args: argparse.Namespace) -> ScreeningProfile:
     )
 
 
+def profile_from_args(args: argparse.Namespace) -> ScreeningProfile:
+    return apply_profile_overrides(PROFILES[args.profile], args)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Screen A-share stocks for steady observation.")
     parser.add_argument(
         "--profile",
-        choices=sorted(PROFILES),
+        choices=[*sorted(PROFILES), "all"],
         default="mid",
-        help="Screening profile: short, mid, or long. Default: mid.",
+        help="Screening profile: short, mid, long, or all. Default: mid.",
     )
     parser.add_argument("--limit", type=int, default=20, help="Number of candidates to display.")
     parser.add_argument(
@@ -591,24 +594,34 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    profile = profile_from_args(args)
     try:
         stocks = fetch_a_share_universe(max_pages=max(args.max_pages, 1))
     except RuntimeError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
-    ranked = rank_stocks(
-        stocks,
-        profile=profile,
-        excluded_codes=parse_excluded_codes(args.exclude),
+    excluded_codes = parse_excluded_codes(args.exclude)
+    profiles = (
+        [profile_from_args(args)]
+        if args.profile != "all"
+        else [apply_profile_overrides(PROFILES[key], args) for key in ("short", "mid", "long")]
     )
 
-    if not ranked:
-        print("No stocks matched the current conservative filters.")
-        return 0
+    for index, profile in enumerate(profiles):
+        ranked = rank_stocks(
+            stocks,
+            profile=profile,
+            excluded_codes=excluded_codes,
+        )
 
-    print_report(ranked, max(args.limit, 1), profile)
+        if index:
+            print()
+        if not ranked:
+            print(f"模型: {profile.title}")
+            print("No stocks matched the current filters.")
+            continue
+
+        print_report(ranked, max(args.limit, 1), profile)
     return 0
 
 

@@ -73,6 +73,9 @@ python3 steady_stock_screener.py --profile mid --limit 10
 
 # 长期分红价值观察版：约 1-3 年以上
 python3 steady_stock_screener.py --profile long --limit 10
+
+# 一次输出三版，便于横向对比
+python3 steady_stock_screener.py --profile all --limit 5
 ```
 
 三版模型：
