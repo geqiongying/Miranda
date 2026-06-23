@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -20,7 +21,8 @@ from typing import Any
 
 EASTMONEY_LIST_URL = "https://push2.eastmoney.com/api/qt/clist/get"
 DEFAULT_EXCLUDED_CODES = {"688027", "002214", "300604"}
-DEFAULT_PAGE_SIZE = 500
+DEFAULT_PAGE_SIZE = 100
+MAX_FETCH_RETRIES = 3
 
 
 @dataclass(frozen=True)
@@ -87,11 +89,17 @@ def fetch_page(page: int, page_size: int) -> dict[str, Any]:
         },
     )
 
-    try:
-        with urllib.request.urlopen(request, timeout=15) as response:
-            return json.load(response)
-    except (urllib.error.URLError, json.JSONDecodeError) as exc:
-        raise RuntimeError(f"Failed to fetch Eastmoney stock list: {exc}") from exc
+    last_error: Exception | None = None
+    for attempt in range(1, MAX_FETCH_RETRIES + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                return json.load(response)
+        except (urllib.error.URLError, json.JSONDecodeError) as exc:
+            last_error = exc
+            if attempt < MAX_FETCH_RETRIES:
+                time.sleep(2 ** (attempt - 1))
+
+    raise RuntimeError(f"Failed to fetch Eastmoney stock list page {page}: {last_error}")
 
 
 def parse_stock(item: dict[str, Any]) -> Stock:
