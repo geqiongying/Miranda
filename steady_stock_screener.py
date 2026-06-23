@@ -57,7 +57,13 @@ def fetch_a_share_universe(
     total = None
 
     while page <= max_pages and (total is None or len(stocks) < total):
-        payload = fetch_page(page, page_size)
+        try:
+            payload = fetch_page(page, page_size)
+        except RuntimeError as exc:
+            if stocks:
+                print(f"warning: {exc}; using {len(stocks)} stocks already fetched.", file=sys.stderr)
+                break
+            raise
         data = payload.get("data") or {}
         diff = data.get("diff") or []
         if total is None:
