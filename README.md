@@ -85,6 +85,14 @@ python3 stock_dashboard.py --holdings holdings.csv
 python3 stock_dashboard.py --once
 ```
 
+生成一个可直接打开的静态 HTML 文件：
+
+```bash
+python3 stock_dashboard.py --export stock_dashboard.html
+```
+
+生成后可以直接用浏览器打开 `stock_dashboard.html`。静态文件里嵌入的是生成时刻的行情快照，不会自动联网刷新；需要更新行情时，重新运行上面的导出命令即可。
+
 如需修改端口：
 
 ```bash
