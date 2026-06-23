@@ -64,6 +64,7 @@ python3 steady_stock_screener.py
 
 默认规则：
 
+- 按总市值排序，默认只拉取前 10 页，约 1000 只大中市值股票
 - 排除当前持仓：`688027`、`002214`、`300604`
 - 排除名称包含 `ST` 或 `退` 的股票
 - 总市值不低于 300 亿元
@@ -92,6 +93,9 @@ python3 steady_stock_screener.py --limit 10
 
 # 调整市值、PE、PB 阈值
 python3 steady_stock_screener.py --min-market-cap 50000000000 --max-pe-ttm 30 --max-pb 3
+
+# 扩大或缩小拉取页数；公开接口偶尔会对较深分页返回错误
+python3 steady_stock_screener.py --max-pages 5
 
 # 不排除默认持仓
 python3 steady_stock_screener.py --exclude ""

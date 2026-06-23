@@ -22,6 +22,7 @@ from typing import Any
 EASTMONEY_LIST_URL = "https://push2.eastmoney.com/api/qt/clist/get"
 DEFAULT_EXCLUDED_CODES = {"688027", "002214", "300604"}
 DEFAULT_PAGE_SIZE = 100
+DEFAULT_MAX_PAGES = 10
 MAX_FETCH_RETRIES = 3
 
 
@@ -47,12 +48,15 @@ class ScoredStock:
     signals: list[str]
 
 
-def fetch_a_share_universe(page_size: int = DEFAULT_PAGE_SIZE) -> list[Stock]:
+def fetch_a_share_universe(
+    page_size: int = DEFAULT_PAGE_SIZE,
+    max_pages: int = DEFAULT_MAX_PAGES,
+) -> list[Stock]:
     stocks: list[Stock] = []
     page = 1
     total = None
 
-    while total is None or len(stocks) < total:
+    while page <= max_pages and (total is None or len(stocks) < total):
         payload = fetch_page(page, page_size)
         data = payload.get("data") or {}
         diff = data.get("diff") or []
@@ -325,6 +329,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-pe-ttm", type=float, default=35, help="Maximum PE(TTM).")
     parser.add_argument("--max-pb", type=float, default=4, help="Maximum PB.")
     parser.add_argument(
+        "--max-pages",
+        type=int,
+        default=DEFAULT_MAX_PAGES,
+        help=(
+            "Maximum quote-list pages to fetch, sorted by total market cap. "
+            f"Default: {DEFAULT_MAX_PAGES} pages, about {DEFAULT_MAX_PAGES * DEFAULT_PAGE_SIZE} stocks."
+        ),
+    )
+    parser.add_argument(
         "--exclude",
         help=(
             "Comma-separated stock codes to exclude. "
@@ -338,7 +351,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     try:
-        stocks = fetch_a_share_universe()
+        stocks = fetch_a_share_universe(max_pages=max(args.max_pages, 1))
     except RuntimeError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
