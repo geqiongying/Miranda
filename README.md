@@ -54,7 +54,10 @@ JSON 示例：
 
 ## PushPlus 股票买入提醒
 
-`stock_buy_alert.py` 会按一个简单趋势规则检查买入观察信号，并在触发时通过 PushPlus 推送到微信。默认监控 **国投中鲁 600962**。
+`stock_buy_alert.py` 会按一个简单趋势规则检查买入观察信号，并在触发时通过 PushPlus 推送到微信。默认监控：
+
+- **国投中鲁 600962**
+- **飞龙股份 002536**
 
 默认规则：
 
@@ -68,20 +71,20 @@ JSON 示例：
 python3 stock_buy_alert.py --dry-run
 ```
 
-配置 PushPlus token 后发送提醒：
+配置 PushPlus token 后发送提醒；默认会同时检查国投中鲁和飞龙股份，任意一只触发都会推送：
 
 ```bash
 export PUSHPLUS_TOKEN="你的PushPlus token"
 python3 stock_buy_alert.py
 ```
 
-测试推送可使用 `--notify-when-inactive`，即使未触发买入信号也会推送当前状态：
+测试推送可使用 `--notify-when-inactive`，即使未触发买入信号也会推送默认监控列表的当前状态：
 
 ```bash
 python3 stock_buy_alert.py --notify-when-inactive
 ```
 
-监控其他股票：
+只监控单只股票：
 
 ```bash
 python3 stock_buy_alert.py --code 002064 --alias 华峰化学 --dry-run

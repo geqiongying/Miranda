@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """PushPlus buy-signal alert for A-share trend rules.
 
-Default target is 国投中鲁 (600962). The rule is intentionally simple and
-matches the manual discipline used in this repository:
+Default targets are 国投中鲁 (600962) and 飞龙股份 (002536). The rule is
+intentionally simple and matches the manual discipline used in this repository:
 
 - latest price is above the 20-day moving average
 - the 20-day moving average is flat or rising
@@ -33,6 +33,18 @@ PUSHPLUS_URL = "http://www.pushplus.plus/send"
 DEFAULT_CODE = "600962"
 DEFAULT_ALIAS = "国投中鲁"
 DEFAULT_STATE_FILE = ".stock_buy_alert_state.json"
+
+
+@dataclass(frozen=True)
+class WatchTarget:
+    code: str
+    alias: str
+
+
+DEFAULT_WATCHLIST = (
+    WatchTarget(code="600962", alias="国投中鲁"),
+    WatchTarget(code="002536", alias="飞龙股份"),
+)
 
 
 @dataclass(frozen=True)
@@ -274,6 +286,10 @@ def build_message(snapshot: SignalSnapshot) -> str:
     )
 
 
+def build_combined_message(snapshots: list[SignalSnapshot]) -> str:
+    return "\n\n---\n\n".join(build_message(snapshot) for snapshot in snapshots)
+
+
 def send_pushplus(token: str, title: str, content: str) -> None:
     payload = json.dumps(
         {
@@ -331,8 +347,14 @@ def mark_sent(state_file: Path, alert_key: str) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Send PushPlus alert when an A-share buy signal triggers.")
-    parser.add_argument("--code", default=DEFAULT_CODE, help=f"Stock code to watch. Default: {DEFAULT_CODE}.")
-    parser.add_argument("--alias", default=DEFAULT_ALIAS, help=f"Display name. Default: {DEFAULT_ALIAS}.")
+    parser.add_argument(
+        "--code",
+        help=(
+            "Watch a single stock code instead of the default watchlist "
+            f"({DEFAULT_CODE}/{DEFAULT_ALIAS}, 002536/飞龙股份)."
+        ),
+    )
+    parser.add_argument("--alias", help="Display name for --code.")
     parser.add_argument(
         "--token",
         default=os.environ.get("PUSHPLUS_TOKEN"),
@@ -353,28 +375,50 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def resolve_watchlist(args: argparse.Namespace) -> list[WatchTarget]:
+    if args.code:
+        return [WatchTarget(code=args.code, alias=args.alias or args.code)]
+    return list(DEFAULT_WATCHLIST)
+
+
 def main() -> int:
     args = parse_args()
+    targets = resolve_watchlist(args)
 
-    try:
-        snapshot = evaluate_signal(args.code, args.alias)
-    except (RuntimeError, ValueError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
+    snapshots: list[SignalSnapshot] = []
+    errors: list[str] = []
+    for target in targets:
+        try:
+            snapshots.append(evaluate_signal(target.code, target.alias))
+        except (RuntimeError, ValueError) as exc:
+            errors.append(f"{target.alias}({target.code}): {exc}")
+
+    if errors:
+        for error in errors:
+            print(f"error: {error}", file=sys.stderr)
+    if not snapshots:
         return 1
 
-    title = f"股票提醒: {snapshot.name}({snapshot.code})"
-    content = build_message(snapshot)
+    content = build_combined_message(snapshots)
     print(content)
 
-    should_notify = snapshot.triggered or args.notify_when_inactive
-    if not should_notify:
+    notify_snapshots = snapshots if args.notify_when_inactive else [snapshot for snapshot in snapshots if snapshot.triggered]
+    if not notify_snapshots:
         print("未触发提醒条件，不推送。")
         return 0
 
-    alert_key = f"{snapshot.code}:{snapshot.quote_date}:buy-signal:{snapshot.triggered}"
     state_file = Path(args.state_file)
-    if not args.force and already_sent(state_file, alert_key):
-        print(f"今天已经推送过该提醒: {alert_key}")
+    notify_items = [
+        (snapshot, f"{snapshot.code}:{snapshot.quote_date}:buy-signal:{snapshot.triggered}")
+        for snapshot in notify_snapshots
+    ]
+    unsent_items = [
+        (snapshot, alert_key)
+        for snapshot, alert_key in notify_items
+        if args.force or not already_sent(state_file, alert_key)
+    ]
+    if not unsent_items:
+        print("今天已经推送过本次提醒。")
         return 0
 
     if args.dry_run:
@@ -386,12 +430,18 @@ def main() -> int:
         return 1
 
     try:
-        send_pushplus(args.token, title, content)
+        unsent_snapshots = [snapshot for snapshot, _ in unsent_items]
+        push_title = "股票提醒: " + "、".join(
+            f"{snapshot.name}({snapshot.code})" for snapshot in unsent_snapshots
+        )
+        push_content = build_combined_message(unsent_snapshots)
+        send_pushplus(args.token, push_title, push_content)
     except RuntimeError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
-    mark_sent(state_file, alert_key)
+    for _, alert_key in unsent_items:
+        mark_sent(state_file, alert_key)
     print("PushPlus 推送已发送。")
     return 0
 
