@@ -52,6 +52,51 @@ JSON 示例：
 
 > 注意：公开行情接口可能存在延迟、限流或临时不可用。这个工具只用于观察和复盘，不构成投资建议，也不会执行任何交易。
 
+## PushPlus 股票买入提醒
+
+`stock_buy_alert.py` 会按一个简单趋势规则检查买入观察信号，并在触发时通过 PushPlus 推送到微信。默认监控 **国投中鲁 600962**。
+
+默认规则：
+
+- 最新价站上 20 日均线
+- 20 日均线走平或向上
+- 最新价站上 60 日均线
+
+先 dry-run 看当前状态，不会推送：
+
+```bash
+python3 stock_buy_alert.py --dry-run
+```
+
+配置 PushPlus token 后发送提醒：
+
+```bash
+export PUSHPLUS_TOKEN="你的PushPlus token"
+python3 stock_buy_alert.py
+```
+
+测试推送可使用 `--notify-when-inactive`，即使未触发买入信号也会推送当前状态：
+
+```bash
+python3 stock_buy_alert.py --notify-when-inactive
+```
+
+监控其他股票：
+
+```bash
+python3 stock_buy_alert.py --code 001257 --alias 盛龙股份 --dry-run
+```
+
+脚本会用 `.stock_buy_alert_state.json` 记录当天已推送信号，避免定时运行时重复刷屏。若确实需要重复推送，可加 `--force`。
+
+示例 crontab，每个交易日 9:35-15:00 每 15 分钟检查一次：
+
+```cron
+*/15 9-15 * * 1-5 cd /path/to/Miranda && PUSHPLUS_TOKEN="你的PushPlus token" python3 stock_buy_alert.py
+```
+
+> 注意：提醒只是按规则发出的观察信号，不是自动交易，也不构成投资建议。公开行情接口可能延迟或临时不可用，实际操作前仍需打开券商软件核对行情和公告。
+
 ## A 股观察股筛选模型
 
 `steady_stock_screener.py` 会从公开行情列表接口拉取 A 股基础行情和估值字段，并按不同观察周期筛选“值得进一步研究的观察标的”。
