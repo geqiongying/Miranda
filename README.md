@@ -84,8 +84,10 @@ python3 stock_buy_alert.py --notify-when-inactive
 监控其他股票：
 
 ```bash
-python3 stock_buy_alert.py --code 001257 --alias 盛龙股份 --dry-run
+python3 stock_buy_alert.py --code 002064 --alias 华峰化学 --dry-run
 ```
+
+如果股票上市时间较短或公开接口只返回不足 60 根日线，脚本会提示无法计算 60 日线，此时不应强行套用这套趋势规则。
 
 脚本会用 `.stock_buy_alert_state.json` 记录当天已推送信号，避免定时运行时重复刷屏。若确实需要重复推送，可加 `--force`。
 
