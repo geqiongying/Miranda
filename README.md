@@ -94,6 +94,26 @@ python3 stock_buy_alert.py --code 002064 --alias 华峰化学 --dry-run
 
 脚本会用 `.stock_buy_alert_state.json` 记录当天已推送信号，避免定时运行时重复刷屏。若确实需要重复推送，可加 `--force`。
 
+### GitHub Actions 每日收盘推送
+
+仓库内置 `.github/workflows/stock-close-alert.yml`，会在 **工作日北京时间 15:10** 自动运行：
+
+```bash
+python3 stock_buy_alert.py --notify-when-inactive
+```
+
+这表示每天收盘后都会推送默认监控列表的状态；如果有买入观察信号，会在消息里标明触发。
+
+首次使用前，需要在 GitHub 仓库配置 Secret：
+
+1. 打开仓库 `Settings`
+2. 进入 `Secrets and variables` -> `Actions`
+3. 新增 `Repository secret`
+4. 名称填 `PUSHPLUS_TOKEN`
+5. 值填你的 PushPlus token
+
+也可以在 GitHub Actions 页面手动运行 `Stock close alert` 工作流测试。
+
 示例 crontab，每个交易日 9:35-15:00 每 15 分钟检查一次：
 
 ```cron

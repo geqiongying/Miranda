@@ -1,0 +1,26 @@
+name: Stock close alert
+
+on:
+  schedule:
+    # 15:10 China Standard Time on weekdays.
+    - cron: "10 7 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  pushplus-alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Send close summary
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+        run: python3 stock_buy_alert.py --notify-when-inactive
