@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """PushPlus buy-signal alert for A-share trend rules.
 
-Default targets are 国投中鲁 (600962) and 飞龙股份 (002536). The rule is
-intentionally simple and matches the manual discipline used in this repository:
+Default targets are 国投中鲁 (600962), 飞龙股份 (002536), and *ST大立
+(002214). Trend rules are intentionally simple and match the manual discipline
+used in this repository:
 
 - latest price is above the 20-day moving average
 - the 20-day moving average is flat or rising
@@ -39,11 +40,13 @@ DEFAULT_STATE_FILE = ".stock_buy_alert_state.json"
 class WatchTarget:
     code: str
     alias: str
+    mode: str = "buy"
 
 
 DEFAULT_WATCHLIST = (
     WatchTarget(code="600962", alias="国投中鲁"),
     WatchTarget(code="002536", alias="飞龙股份"),
+    WatchTarget(code="002214", alias="*ST大立", mode="st_dali"),
 )
 
 
@@ -87,6 +90,7 @@ class SignalSnapshot:
     quote_time: str
     triggered: bool
     reasons: list[str]
+    signal_name: str = "买入观察信号"
 
 
 def market_symbol(code: str) -> str:
@@ -227,6 +231,69 @@ def evaluate_signal(code: str, alias: str | None = None) -> SignalSnapshot:
     )
 
 
+def evaluate_st_dali_signal(code: str = "002214", alias: str = "*ST大立") -> SignalSnapshot:
+    quote = fetch_sina_quote(code)
+    bars = fetch_daily_bars(code)
+    bars = merge_realtime_quote(bars, quote)
+    closes = [bar.close for bar in bars]
+
+    ma20 = moving_average(closes, 20)
+    prev_ma20 = moving_average(closes[:-1], 20)
+    ma60 = moving_average(closes, 60)
+    price = closes[-1]
+
+    reasons: list[str] = []
+    triggered = False
+
+    if price <= 13.30:
+        triggered = True
+        reasons.append("跌破13.30强风险线，考虑处理剩余仓位")
+    elif price <= 14.60:
+        triggered = True
+        reasons.append("跌破14.60风险线，考虑减仓")
+    elif 15.10 <= price <= 15.30:
+        triggered = True
+        reasons.append("反弹到15.10-15.30观察区，若站不稳可考虑减仓")
+    elif price >= 16.50:
+        triggered = True
+        reasons.append("站上16.50转强观察线，可复核是否继续持有")
+    else:
+        reasons.append("未触发预设操作价位")
+
+    if price < ma20:
+        reasons.append("价格仍在20日线下方，弱势未修复")
+    else:
+        reasons.append("价格站上20日线，短线有修复迹象")
+
+    if price < ma60:
+        reasons.append("价格仍在60日线下方，中期趋势偏弱")
+    else:
+        reasons.append("价格站上60日线，中期趋势修复")
+
+    quote_date = quote.date or bars[-1].date
+
+    return SignalSnapshot(
+        code=code,
+        name=quote.name or alias,
+        price=price,
+        ma20=ma20,
+        prev_ma20=prev_ma20,
+        ma60=ma60,
+        change_percent=quote.change_percent,
+        quote_date=quote_date,
+        quote_time=quote.time,
+        triggered=triggered,
+        reasons=reasons,
+        signal_name="*ST大立操作提醒",
+    )
+
+
+def evaluate_target(target: WatchTarget) -> SignalSnapshot:
+    if target.mode == "st_dali":
+        return evaluate_st_dali_signal(target.code, target.alias)
+    return evaluate_signal(target.code, target.alias)
+
+
 def merge_realtime_quote(bars: list[DailyBar], quote: Quote) -> list[DailyBar]:
     if quote.current_price <= 0 or quote.date is None:
         return bars
@@ -268,7 +335,7 @@ def parse_date(value: str) -> dt.date | None:
 
 
 def build_message(snapshot: SignalSnapshot) -> str:
-    status = "触发买入观察信号" if snapshot.triggered else "尚未触发买入观察信号"
+    status = f"触发{snapshot.signal_name}" if snapshot.triggered else f"尚未触发{snapshot.signal_name}"
     return "\n".join(
         [
             f"### {snapshot.name}({snapshot.code}) {status}",
@@ -351,7 +418,7 @@ def parse_args() -> argparse.Namespace:
         "--code",
         help=(
             "Watch a single stock code instead of the default watchlist "
-            f"({DEFAULT_CODE}/{DEFAULT_ALIAS}, 002536/飞龙股份)."
+            f"({DEFAULT_CODE}/{DEFAULT_ALIAS}, 002536/飞龙股份, 002214/*ST大立)."
         ),
     )
     parser.add_argument("--alias", help="Display name for --code.")
@@ -377,7 +444,8 @@ def parse_args() -> argparse.Namespace:
 
 def resolve_watchlist(args: argparse.Namespace) -> list[WatchTarget]:
     if args.code:
-        return [WatchTarget(code=args.code, alias=args.alias or args.code)]
+        mode = "st_dali" if args.code == "002214" else "buy"
+        return [WatchTarget(code=args.code, alias=args.alias or args.code, mode=mode)]
     return list(DEFAULT_WATCHLIST)
 
 
@@ -389,7 +457,7 @@ def main() -> int:
     errors: list[str] = []
     for target in targets:
         try:
-            snapshots.append(evaluate_signal(target.code, target.alias))
+            snapshots.append(evaluate_target(target))
         except (RuntimeError, ValueError) as exc:
             errors.append(f"{target.alias}({target.code}): {exc}")
 
