@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MIRANDA · 均线手记</title>
+  <meta name="description" content="Miranda 的私人均线手记：5-20-99-128-225 多周期体系、箱体、做T与仓位楼层。" />
+  <meta name="author" content="Miranda Ge" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <nav class="site-nav" id="siteNav">
+    <a class="brand-mark" href="#top">MIRANDA</a>
+    <ul class="nav-links">
+      <li><a href="#system">五线</a></li>
+      <li><a href="#codes">代号</a></li>
+      <li><a href="#playbook">心法</a></li>
+      <li><a href="#lab">工具</a></li>
+    </ul>
+  </nav>
+
+  <header class="hero" id="top">
+    <div class="hero-bg" aria-hidden="true">
+      <svg class="hero-chart" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+        <g class="candles">
+          <rect x="120" y="520" width="14" height="120" style="animation-delay:0.05s" />
+          <rect x="170" y="480" width="14" height="150" style="animation-delay:0.1s" />
+          <rect x="220" y="430" width="14" height="170" style="animation-delay:0.15s" />
+          <rect x="270" y="390" width="14" height="160" style="animation-delay:0.2s" />
+          <rect x="320" y="340" width="14" height="180" style="animation-delay:0.25s" />
+          <rect x="370" y="300" width="14" height="165" style="animation-delay:0.3s" />
+          <rect x="420" y="270" width="14" height="150" style="animation-delay:0.35s" />
+          <rect x="470" y="250" width="14" height="140" style="animation-delay:0.4s" />
+          <rect x="520" y="280" width="14" height="130" style="animation-delay:0.45s" />
+          <rect x="570" y="240" width="14" height="155" style="animation-delay:0.5s" />
+          <rect x="620" y="210" width="14" height="145" style="animation-delay:0.55s" />
+          <rect x="670" y="190" width="14" height="135" style="animation-delay:0.6s" />
+          <rect x="720" y="220" width="14" height="120" style="animation-delay:0.65s" />
+          <rect x="770" y="200" width="14" height="140" style="animation-delay:0.7s" />
+          <rect x="820" y="170" width="14" height="150" style="animation-delay:0.75s" />
+          <rect x="870" y="150" width="14" height="145" style="animation-delay:0.8s" />
+          <rect x="920" y="180" width="14" height="125" style="animation-delay:0.85s" />
+          <rect x="970" y="160" width="14" height="140" style="animation-delay:0.9s" />
+          <rect x="1020" y="140" width="14" height="150" style="animation-delay:0.95s" />
+          <rect x="1070" y="120" width="14" height="145" style="animation-delay:1s" />
+        </g>
+        <path class="ma-slow" d="M80,620 C220,590 320,540 420,470 C540,380 650,340 780,300 C920,255 1080,230 1320,210" />
+        <path class="ma-mid" d="M80,580 C240,540 360,470 480,390 C620,290 740,250 880,230 C1020,210 1160,190 1320,170" />
+        <path class="ma-fast" d="M80,540 C250,500 360,420 500,330 C650,220 780,190 930,175 C1080,160 1180,150 1320,140" />
+      </svg>
+    </div>
+    <div class="hero-content">
+      <div class="hero-brand">MIRANDA</div>
+      <h1>均线手记</h1>
+      <p>只属于 Miranda 的私人学习站。把多周期均线、箱体与做 T 收成一套随时可翻的框架。</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#system">进入手记</a>
+        <a class="btn btn-ghost" href="#lab">打开分析工具</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="section reveal" id="system">
+      <div class="wrap">
+        <div class="section-label">01 / System</div>
+        <h2>五条核心均线</h2>
+        <p class="section-lead">参数确认：5-20-99-128-225。同一组均线换到不同周期，就会变成不同的观察尺。</p>
+        <div class="ma-list">
+          <article class="ma-row">
+            <div class="ma-code">MA5</div>
+            <div>
+              <h3>极短线</h3>
+              <p>跟踪日内与隔日强弱。跌破 MA5，极短线先走弱。</p>
+            </div>
+          </article>
+          <article class="ma-row">
+            <div class="ma-code">MA20</div>
+            <div>
+              <h3>短线生命线</h3>
+              <p>短期多空分界。价格在上方偏强，破位先减仓。</p>
+            </div>
+          </article>
+          <article class="ma-row">
+            <div class="ma-code">MA99</div>
+            <div>
+              <h3>中期趋势线</h3>
+              <p>约等于半年线作用。回踩不破，中期升势仍在。</p>
+            </div>
+          </article>
+          <article class="ma-row">
+            <div class="ma-code">MA128</div>
+            <div>
+              <h3>中长期生命线</h3>
+              <p>120 分钟图上的变盘核心带。底部确认常落在这里。</p>
+            </div>
+          </article>
+          <article class="ma-row">
+            <div class="ma-code">MA225</div>
+            <div>
+              <h3>年线 · 牛熊线</h3>
+              <p>结构底线与长期格局。上方偏牛，跌破转防守。</p>
+            </div>
+          </article>
+        </div>
+        <div class="callout">
+          核心思想：长周期定方向，短周期定买卖点。例如 15 分钟图上的 MA225，是日线级压力在短周期上的映射。
+        </div>
+      </div>
+    </section>
+
+    <section class="section reveal" id="codes">
+      <div class="wrap">
+        <div class="section-label">02 / Codes</div>
+        <h2>「X-Y」代号怎么读</h2>
+        <p class="section-lead">眼哥口中的 120-99、15-225，不是神秘参数，而是「周期 × 均线」的速记。</p>
+        <div class="formula">
+          <strong>X-Y = 打开 X 分钟图，看 MA-Y</strong>
+          例如：15-225 = 打开 15 分钟 K 线，盯 MA225 的位置。
+        </div>
+        <div class="code-chips" id="codeChips" aria-label="代号速查">
+          <button class="code-chip is-active" data-code="120-99">120-99</button>
+          <button class="code-chip" data-code="120-128">120-128</button>
+          <button class="code-chip" data-code="120-225">120-225</button>
+          <button class="code-chip" data-code="15-225">15-225</button>
+          <button class="code-chip" data-code="15-99">15-99</button>
+          <button class="code-chip" data-code="日-MA20">日-MA20</button>
+        </div>
+        <p class="code-explain" id="codeExplain">120 分钟图上的 MA99：中期多空分界，支撑转压力的关键位。</p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>代号</th>
+                <th>周期</th>
+                <th>均线</th>
+                <th>用途</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>日-MA5</td><td>日线</td><td>MA5</td><td>极短线强弱</td></tr>
+              <tr><td>日-MA20</td><td>日线</td><td>MA20</td><td>短线多空分界</td></tr>
+              <tr><td>日-MA99</td><td>日线</td><td>MA99</td><td>中期趋势方向</td></tr>
+              <tr><td>日-MA225</td><td>日线</td><td>MA225</td><td>年线 / 牛熊</td></tr>
+              <tr><td>120-99</td><td>120 分钟</td><td>MA99</td><td>中期多空分界</td></tr>
+              <tr><td>120-128</td><td>120 分钟</td><td>MA128</td><td>变盘点 / 底部确认</td></tr>
+              <tr><td>120-225</td><td>120 分钟</td><td>MA225</td><td>结构底线 / 决战点</td></tr>
+              <tr><td>15-225</td><td>15 分钟</td><td>MA225</td><td>短线压力 / 突破</td></tr>
+              <tr><td>15-99</td><td>15 分钟</td><td>MA99</td><td>盘中支撑 / 做 T 买点</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section reveal" id="timeline">
+      <div class="wrap">
+        <div class="section-label">03 / Timeline</div>
+        <h2>什么时候看什么线</h2>
+        <p class="section-lead">同一天里切换周期：开盘找感觉，盘中验方向，尾盘定策略。</p>
+        <div class="timeline">
+          <div class="time-item">
+            <time>09:30</time>
+            <div>
+              <h3>开盘定方向</h3>
+              <p>看集合竞价与 15 分钟分时。重点：15-99 支撑、15-225 压力。</p>
+            </div>
+          </div>
+          <div class="time-item">
+            <time>10:00</time>
+            <div>
+              <h3>确认趋势</h3>
+              <p>量能、红绿比是否配合。对照 120-99 与日线 MA20。</p>
+            </div>
+          </div>
+          <div class="time-item">
+            <time>11:00</time>
+            <div>
+              <h3>盘中关键判断</h3>
+              <p>是否缩量、板块是否轮动。盯 15-225 突破与日线 MA5。</p>
+            </div>
+          </div>
+          <div class="time-item">
+            <time>14:30</time>
+            <div>
+              <h3>下午定策略</h3>
+              <p>两点后资金动向。用 120-99 确认方向，日线 MA225 看格局。</p>
+            </div>
+          </div>
+        </div>
+        <div class="callout">
+          上升看 120-99 回踩；下降看日线 MA225；震荡用 15-99 / 15-225 高抛低吸。
+        </div>
+      </div>
+    </section>
+
+    <section class="section reveal" id="framework">
+      <div class="wrap">
+        <div class="section-label">04 / Framework</div>
+        <h2>趋势、箱体与做 T</h2>
+        <p class="section-lead">均线告诉你姿态，箱体告诉你结构，15 分钟图负责日内腾挪。</p>
+        <div class="split">
+          <div class="plain-block">
+            <h3>均线姿态</h3>
+            <ul>
+              <li>多头：短线在上、价格在最上，只做多，回踩不破可加。</li>
+              <li>空头：长线在上、价格在最下，不抄底，反弹快进快出。</li>
+              <li>粘合：多空均衡，等发散再定方向。</li>
+              <li>共振：日线定方向 → 120 确认 → 15 找点。</li>
+            </ul>
+          </div>
+          <div class="plain-block">
+            <h3>箱体口诀</h3>
+            <ul>
+              <li>破顶回踩不破 → 加仓</li>
+              <li>穿底反弹不过 → 减仓</li>
+              <li>箱体内 → 高抛低吸等方向</li>
+              <li>箱体上升 + 均线多头 = 最强状态</li>
+            </ul>
+          </div>
+        </div>
+        <div class="split" style="margin-top:1.5rem;">
+          <div class="plain-block">
+            <h3>正 T · 先买后卖</h3>
+            <p>回踩 15-99 低吸，反弹到 15-225 附近 T 出。适合价格在均价线上方的强势日。</p>
+          </div>
+          <div class="plain-block">
+            <h3>倒 T · 先卖后买</h3>
+            <p>冲到 15-225 先卖，回落到 15-99 接回。适合偏弱或仓位偏重时。</p>
+          </div>
+        </div>
+        <div class="callout quote">
+          “卖非常难说清楚……震荡卖压力位，突破看前高，新高看感觉。”
+        </div>
+      </div>
+    </section>
+
+    <section class="section reveal" id="playbook">
+      <div class="wrap">
+        <div class="section-label">05 / Playbook</div>
+        <h2>仓位楼层与交易心法</h2>
+        <p class="section-lead">把仓位想成楼层：越靠近结构底线，越有理由上仓；看不清就下楼。</p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>楼层</th>
+                <th>仓位</th>
+                <th>参考位置</th>
+                <th>动作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>空仓 / 1-2 楼</td><td>0–20%</td><td>技术面刚企稳、120-99 上方</td><td>轻仓试水</td></tr>
+              <tr><td>3 楼</td><td>约 30%</td><td>120-99 上方</td><td>合理底仓，进可攻退可守</td></tr>
+              <tr><td>4–5 楼</td><td>40–50%</td><td>120-128 附近</td><td>震荡上限，做 T 锁利</td></tr>
+              <tr><td>6–7 楼</td><td>60–80%</td><td>接近 120-225</td><td>以做 T 为主</td></tr>
+              <tr><td>8 楼</td><td>满仓</td><td>120-225 区域</td><td>到了底线才上；满仓挨打则做 T 自救，不轻易割</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="mantra-grid">
+          <div>
+            <h3>6.5 楼策略</h3>
+            <p>6 成底仓不动，0.5 成机动做 T，剩余现金防风险。行情差可降至 3 成。</p>
+          </div>
+          <div>
+            <h3>三种可能 · 两个大概</h3>
+            <p>周末先画区间：窄幅、较大震荡或直接反转；下周只盯向上放量突破或向下破位，外加延长横盘。</p>
+          </div>
+          <div>
+            <h3>量能阶梯</h3>
+            <p>极致缩量常是变盘前兆；2.5–3 万亿多是反弹；放量过 3 万亿才谈确认方向。</p>
+          </div>
+          <div>
+            <h3>四大天王</h3>
+            <p>主线看 CPO、AI 算力、先进封装、存储。风向标：中际旭创、中芯国际；杠杆情绪标的只观察，不碰。</p>
+          </div>
+        </div>
+        <div class="callout">
+          买点：多头回踩不破、箱底放量止跌、120-99 向上、15-99 做 T。<br />
+          卖点：震荡卖压力、突破看前高、15-225 遇阻、量价背离先跑。<br />
+          心态：看不懂就不做，急跌不恐慌，急拉不追高。
+        </div>
+      </div>
+    </section>
+
+    <section class="section reveal" id="lab">
+      <div class="wrap">
+        <div class="section-label">06 / Lab</div>
+        <h2>Miranda 分析台</h2>
+        <p class="section-lead">输入股票 / 指数 / 板块代码，按 5-20-99-128-225 与多周期规则做技术面速览。</p>
+
+        <div class="tool-panel">
+          <div class="tool-row">
+            <input id="stockInput" type="text" placeholder="例如 600519、399006、BK0477" autocomplete="off" />
+            <button class="btn btn-primary" id="analyzeBtn" type="button">深度分析</button>
+          </div>
+          <div class="tool-hints">
+            <span>示例：</span>
+            <button type="button" data-fill="600519">600519 茅台</button>
+            <button type="button" data-fill="300750">300750 宁德</button>
+            <button type="button" data-fill="399006">399006 创业板</button>
+            <button type="button" data-fill="000001">000001 上证</button>
+            <button type="button" data-fill="BK0477">BK0477 半导体</button>
+          </div>
+          <div class="status-box" id="loadingStatus" hidden>正在获取数据...</div>
+          <div class="error-box" id="errorMsg" hidden></div>
+          <div class="result-box" id="analysisResult" hidden></div>
+        </div>
+
+        <div class="tool-panel" style="margin-top:1.5rem;">
+          <h3 style="font-family:var(--font-serif);font-size:1.25rem;margin-bottom:0.35rem;">三大指数 · MA99 / 128 / 225</h3>
+          <p style="color:var(--muted);margin-bottom:0.5rem;">日线近似观察 120 分钟核心三线位置。</p>
+          <div class="idx-tabs" id="idxTabs">
+            <button type="button" class="is-active" data-idx="000001">上证指数</button>
+            <button type="button" data-idx="399006">创业板指</button>
+            <button type="button" data-idx="000688">科创50</button>
+            <button type="button" id="refreshIdx" class="btn btn-ghost" style="color:var(--ink);border-color:var(--line);">刷新</button>
+          </div>
+          <div class="status-box" id="idxLoading" hidden>加载中...</div>
+          <div class="error-box" id="idxError" hidden></div>
+          <canvas id="idxChartCanvas" width="900" height="480" aria-label="指数均线走势图"></canvas>
+          <div class="metric-grid" id="idxMAValues" hidden>
+            <div class="metric"><span>指数</span><strong id="idxNameDisplay">--</strong></div>
+            <div class="metric"><span>最新价</span><strong id="idxPriceDisplay">--</strong></div>
+            <div class="metric"><span>MA99 中期分界</span><strong id="idxMA99Display">--</strong></div>
+            <div class="metric"><span>MA128 变盘点</span><strong id="idxMA128Display">--</strong></div>
+            <div class="metric"><span>MA225 结构底线</span><strong id="idxMA225Display">--</strong></div>
+          </div>
+          <div class="callout" id="idxPositionAlert" style="display:none;margin-top:1rem;"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="brand-mark">MIRANDA</div>
+      <p>私人学习手记 · 内容整理自公开分享（「一双看透真相的双眼」）与个人理解。</p>
+      <p class="disclaimer">仅供 Miranda 个人学习参考，不构成任何投资建议。股市有风险，决策需谨慎。</p>
+    </div>
+  </footer>
+
+  <script src="./js/app.js"></script>
+</body>
+</html>
