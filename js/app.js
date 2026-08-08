@@ -9,9 +9,9 @@
   };
 
   const IDX_CONFIG = {
-    "000001": { secid: "1.000001", name: "上证指数", color: "#c23b2a" },
-    "399006": { secid: "0.399006", name: "创业板指", color: "#1f7a4d" },
-    "000688": { secid: "1.000688", name: "科创50", color: "#0f7a64" },
+    "000001": { secid: "1.000001", symbol: "sh000001", name: "上证指数", color: "#c23b2a" },
+    "399006": { secid: "0.399006", symbol: "sz399006", name: "创业板指", color: "#1f7a4d" },
+    "000688": { secid: "1.000688", symbol: "sh000688", name: "科创50", color: "#0f7a64" },
   };
 
   let currentIdx = "000001";
@@ -47,17 +47,41 @@
     });
   });
 
-  // ---------- Network ----------
-  async function fetchJson(url) {
-    try {
-      const direct = await fetch(url, { mode: "cors" });
-      if (direct.ok) return direct.json();
-    } catch (_) {
-      // fall through to proxy
-    }
-    const proxied = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-    const resp = await fetch(proxied);
-    if (!resp.ok) throw new Error("行情接口暂时不可用，请稍后重试");
+  // ---------- Network / market data ----------
+  function fetchJsonp(url, timeoutMs = 12000) {
+    return new Promise((resolve, reject) => {
+      const cbName = `__miranda_cb_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+      const script = document.createElement("script");
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error("行情请求超时"));
+      }, timeoutMs);
+
+      function cleanup() {
+        clearTimeout(timer);
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[cbName] = (data) => {
+        cleanup();
+        resolve(data);
+      };
+
+      script.onerror = () => {
+        cleanup();
+        reject(new Error("行情接口加载失败"));
+      };
+
+      const joiner = url.includes("?") ? "&" : "?";
+      script.src = `${url}${joiner}cb=${cbName}`;
+      document.head.appendChild(script);
+    });
+  }
+
+  async function fetchCorsJson(url) {
+    const resp = await fetch(url, { mode: "cors", credentials: "omit" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     return resp.json();
   }
 
@@ -80,20 +104,72 @@
     code = code.replace(/^(SH|SZ|BJ)/i, "");
     code = code.replace(/^(\d+\.)/, "");
 
-    if (/^BK\d{3,5}$/.test(code)) return { secid: "90." + code, type: "板块", name: code };
-    if (code === "000001") return { secid: "1.000001", type: "指数", name: "上证指数" };
-    if (code === "000688") return { secid: "1.000688", type: "指数", name: "科创50" };
-    if (code === "399001") return { secid: "0.399001", type: "指数", name: "深证成指" };
-    if (code === "399006") return { secid: "0.399006", type: "指数", name: "创业板指" };
-    if (code === "399005") return { secid: "0.399005", type: "指数", name: "中小板指" };
-    if (/^[6]\d{5}$/.test(code)) return { secid: "1." + code, type: "股票", name: code };
-    if (/^(000|001)\d{3}$/.test(code)) return { secid: "0." + code, type: "股票", name: code };
-    if (/^(002|003)\d{3}$/.test(code)) return { secid: "0." + code, type: "股票", name: code };
-    if (/^(300|301)\d{3}$/.test(code)) return { secid: "0." + code, type: "股票", name: code };
-    if (/^[48]\d{5}$/.test(code)) return { secid: "0." + code, type: "股票", name: code };
-    if (/^(159|16|15)\d{4}$/.test(code)) return { secid: "0." + code, type: "ETF", name: code };
-    if (/^51\d{4}$/.test(code)) return { secid: "1." + code, type: "ETF", name: code };
+    if (/^BK\d{3,5}$/.test(code)) {
+      return { secid: "90." + code, symbol: null, type: "板块", name: code };
+    }
+    if (code === "000001") return { secid: "1.000001", symbol: "sh000001", type: "指数", name: "上证指数" };
+    if (code === "000688") return { secid: "1.000688", symbol: "sh000688", type: "指数", name: "科创50" };
+    if (code === "399001") return { secid: "0.399001", symbol: "sz399001", type: "指数", name: "深证成指" };
+    if (code === "399006") return { secid: "0.399006", symbol: "sz399006", type: "指数", name: "创业板指" };
+    if (code === "399005") return { secid: "0.399005", symbol: "sz399005", type: "指数", name: "中小板指" };
+    if (/^[6]\d{5}$/.test(code)) return { secid: "1." + code, symbol: "sh" + code, type: "股票", name: code };
+    if (/^(000|001)\d{3}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "股票", name: code };
+    if (/^(002|003)\d{3}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "股票", name: code };
+    if (/^(300|301)\d{3}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "股票", name: code };
+    if (/^[48]\d{5}$/.test(code)) return { secid: "0." + code, symbol: "bj" + code, type: "股票", name: code };
+    if (/^(159|16|15)\d{4}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "ETF", name: code };
+    if (/^51\d{4}$/.test(code)) return { secid: "1." + code, symbol: "sh" + code, type: "ETF", name: code };
     return null;
+  }
+
+  async function fetchQuote(info) {
+    const url = `https://push2delay.eastmoney.com/api/qt/stock/get?secid=${info.secid}&fields=f43,f44,f45,f46,f47,f48,f57,f58,f60,f169,f170`;
+    const quoteData = await fetchJsonp(url);
+    if (!quoteData.data) throw new Error("未找到该代码数据，请检查是否输入正确");
+    const q = quoteData.data;
+    return {
+      name: q.f58 || info.name,
+      price: q.f43 / 100,
+      high: q.f44 / 100,
+      low: q.f45 / 100,
+      open: q.f46 / 100,
+      preClose: q.f60 / 100,
+      change: q.f169 / 100,
+      changePct: q.f170 / 100,
+    };
+  }
+
+  async function fetchDayKlines(symbol) {
+    if (!symbol) throw new Error("该代码暂不支持 K 线拉取（如部分板块）");
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${symbol},day,,,260,qfq`;
+    const data = await fetchCorsJson(url);
+    const node = data?.data?.[symbol];
+    const rows = node?.qfqday || node?.day;
+    if (!rows || !rows.length) throw new Error("未能获取 K 线数据");
+    return rows.map((r) => ({
+      date: r[0],
+      open: parseFloat(r[1]),
+      close: parseFloat(r[2]),
+      high: parseFloat(r[3]),
+      low: parseFloat(r[4]),
+      volume: parseFloat(r[5] || 0),
+    }));
+  }
+
+  async function fetchMinuteCloses(symbol, minutes = 15, count = 250) {
+    if (!symbol) return null;
+    // Tencent minute endpoint variants differ by market; degrade quietly if unavailable.
+    const url = `https://web.ifzq.gtimg.cn/appstock/app/kline/mkline?param=${symbol},m${minutes},,${count}`;
+    try {
+      const data = await fetchCorsJson(url);
+      const node = data?.data?.[symbol];
+      const key = `m${minutes}`;
+      const rows = node?.[key];
+      if (!rows || !rows.length) return null;
+      return rows.map((r) => parseFloat(r[2]));
+    } catch (_) {
+      return null;
+    }
   }
 
   function trendLabel(price, ma) {
@@ -141,26 +217,12 @@
     loading.textContent = "获取实时行情...";
 
     try {
-      const quoteUrl = `https://push2.eastmoney.com/api/qt/stock/get?secid=${info.secid}&fields=f43,f44,f45,f46,f47,f48,f57,f58,f60,f169,f170`;
-      const quoteData = await fetchJson(quoteUrl);
-      if (!quoteData.data) throw new Error("未找到该代码数据，请检查是否输入正确");
-
-      const q = quoteData.data;
-      const name = q.f58 || info.name;
-      const price = q.f43 / 100;
-      const change = q.f169 / 100;
-      const changePct = q.f170 / 100;
-      const high = q.f44 / 100;
-      const low = q.f45 / 100;
-      const open = q.f46 / 100;
-      const preClose = q.f60 / 100;
+      const quote = await fetchQuote(info);
+      const { name, price, change, changePct, high, low, open, preClose } = quote;
 
       loading.textContent = "计算日线均线...";
-      const klineUrl = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${info.secid}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=250`;
-      const klineData = await fetchJson(klineUrl);
-      if (!klineData.data || !klineData.data.klines) throw new Error("未能获取 K 线数据");
-
-      const closes = klineData.data.klines.map((k) => parseFloat(k.split(",")[2]));
+      const klines = await fetchDayKlines(info.symbol);
+      const closes = klines.map((k) => k.close);
       const last = closes.length - 1;
       const current = {
         ma5: calcMA(closes, 5)[last],
@@ -172,19 +234,13 @@
 
       loading.textContent = "读取 15 分钟映射...";
       let m15 = { ma99: null, ma225: null };
-      try {
-        const min15Url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${info.secid}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=15&fqt=1&end=20500101&lmt=250`;
-        const min15Data = await fetchJson(min15Url);
-        if (min15Data.data && min15Data.data.klines) {
-          const c15 = min15Data.data.klines.map((k) => parseFloat(k.split(",")[2]));
-          const i15 = c15.length - 1;
-          m15 = {
-            ma99: calcMA(c15, 99)[i15],
-            ma225: calcMA(c15, 225)[i15],
-          };
-        }
-      } catch (_) {
-        // optional layer
+      const c15 = await fetchMinuteCloses(info.symbol, 15, 250);
+      if (c15 && c15.length) {
+        const i15 = c15.length - 1;
+        m15 = {
+          ma99: calcMA(c15, 99)[i15],
+          ma225: calcMA(c15, 225)[i15],
+        };
       }
 
       const arr = arrangementScore(current);
@@ -282,39 +338,18 @@
     const cfg = IDX_CONFIG[code];
     showIdxLoading(`获取 ${cfg.name} 行情...`);
     try {
-      const quoteUrl = `https://push2.eastmoney.com/api/qt/stock/get?secid=${cfg.secid}&fields=f43,f58,f169,f170`;
-      const qd = await fetchJson(quoteUrl);
-      if (!qd.data) throw new Error(`${cfg.name} 数据获取失败`);
-
-      const currentPrice = qd.data.f43 / 100;
-      const changeAmt = qd.data.f169 / 100;
-      const changePct = qd.data.f170 / 100;
-
+      const quote = await fetchQuote({ secid: cfg.secid, name: cfg.name });
       showIdxLoading(`获取 ${cfg.name} K 线...`);
-      const klineUrl = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${cfg.secid}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=260`;
-      const kd = await fetchJson(klineUrl);
-      if (!kd.data || !kd.data.klines) throw new Error("K 线数据获取失败");
-
-      const klines = kd.data.klines.map((k) => {
-        const p = k.split(",");
-        return {
-          date: p[0],
-          open: parseFloat(p[1]),
-          close: parseFloat(p[2]),
-          high: parseFloat(p[3]),
-          low: parseFloat(p[4]),
-          volume: parseFloat(p[5]),
-        };
-      });
+      const klines = await fetchDayKlines(cfg.symbol);
       const closes = klines.map((k) => k.close);
       const ma99 = calcMA(closes, 99);
       const ma128 = calcMA(closes, 128);
       const ma225 = calcMA(closes, 225);
       const data = {
         name: cfg.name,
-        price: currentPrice,
-        changeAmt,
-        changePct,
+        price: quote.price,
+        changeAmt: quote.change,
+        changePct: quote.changePct,
         klines,
         ma99,
         ma128,
