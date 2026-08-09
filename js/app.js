@@ -313,6 +313,323 @@
     });
   });
 
+  // ---------- Review templates ----------
+  function near(price, level, pct = 0.015) {
+    if (price == null || level == null || level === 0) return false;
+    return Math.abs(price - level) / level <= pct;
+  }
+
+  function avg(arr) {
+    if (!arr.length) return 0;
+    return arr.reduce((a, b) => a + b, 0) / arr.length;
+  }
+
+  function buildContext(quote, klines, m15Closes) {
+    const closes = klines.map((k) => k.close);
+    const highs = klines.map((k) => k.high);
+    const lows = klines.map((k) => k.low);
+    const vols = klines.map((k) => k.volume || 0);
+    const last = closes.length - 1;
+    const ma5 = calcMA(closes, 5);
+    const ma20 = calcMA(closes, 20);
+    const ma99 = calcMA(closes, 99);
+    const ma128 = calcMA(closes, 128);
+    const ma225 = calcMA(closes, 225);
+
+    const recent = klines.slice(-8);
+    const prev20High = Math.max(...highs.slice(-21, -1));
+    const prev10High = Math.max(...highs.slice(-11, -1));
+    const recentRange = Math.max(...recent.map((k) => k.high)) - Math.min(...recent.map((k) => k.low));
+    const older = klines.slice(-20, -8);
+    const olderRange = Math.max(...older.map((k) => k.high)) - Math.min(...older.map((k) => k.low));
+    const volAvg10 = avg(vols.slice(-11, -1));
+    const volLast = vols[last] || 0;
+    const volPrev = vols[last - 1] || 0;
+
+    const maBundle = [ma99[last], ma128[last], ma225[last]].filter((v) => v != null);
+    const maSpread =
+      maBundle.length === 3
+        ? (Math.max(...maBundle) - Math.min(...maBundle)) / quote.price
+        : null;
+
+    let m15 = { ma99: null, ma128: null, ma225: null, last: null };
+    if (m15Closes && m15Closes.length) {
+      const i = m15Closes.length - 1;
+      m15 = {
+        ma99: calcMA(m15Closes, 99)[i],
+        ma128: calcMA(m15Closes, 128)[i],
+        ma225: calcMA(m15Closes, 225)[i],
+        last: m15Closes[i],
+      };
+    }
+
+    return {
+      quote,
+      klines,
+      last,
+      price: quote.price,
+      ma: {
+        ma5: ma5[last],
+        ma20: ma20[last],
+        ma99: ma99[last],
+        ma128: ma128[last],
+        ma225: ma225[last],
+        ma20Prev: ma20[last - 1],
+        ma99Prev: ma99[last - 1],
+      },
+      m15,
+      prev20High,
+      prev10High,
+      recentRangePct: recentRange / quote.price,
+      olderRangePct: olderRange / quote.price || 0.01,
+      volAvg10,
+      volLast,
+      volPrev,
+      maSpread,
+      touchedMaToday:
+        near(quote.low, ma99[last], 0.012) ||
+        near(quote.low, ma128[last], 0.012) ||
+        near(quote.low, ma225[last], 0.012) ||
+        near(quote.price, ma99[last], 0.012) ||
+        near(quote.price, ma128[last], 0.012) ||
+        near(quote.price, ma225[last], 0.012),
+      reclaimAfterPierce: (() => {
+        const levels = [ma99[last], ma128[last], ma225[last]].filter(Boolean);
+        return levels.some((lv) => quote.low < lv && quote.price >= lv * 0.998);
+      })(),
+      fadeFromHigh: quote.high > 0 ? (quote.high - quote.price) / quote.high >= 0.012 : false,
+      weakUpVolume: quote.changePct > 0 && volLast > 0 && volLast < volAvg10 * 0.9,
+      failedBreak: quote.high >= prev10High * 0.998 && quote.price < prev10High * 0.995,
+    };
+  }
+
+  function matchTemplates(ctx) {
+    const { price, ma, m15, quote } = ctx;
+    const trendOk =
+      (price >= (ma.ma20 || price) * 0.985 || (ma.ma20 != null && ma.ma20 >= (ma.ma20Prev || ma.ma20))) &&
+      price >= (ma.ma225 || price) * 0.97;
+
+    const pullback15 =
+      (m15.ma99 != null && near(m15.last, m15.ma99, 0.012)) ||
+      (m15.ma128 != null && near(m15.last, m15.ma128, 0.012)) ||
+      (m15.ma225 != null && near(m15.last, m15.ma225, 0.012)) ||
+      ctx.touchedMaToday;
+
+    const shrinkVol = ctx.volLast > 0 && ctx.volLast < ctx.volAvg10 * 0.85;
+    const clearStop =
+      near(price, ma.ma99, 0.02) || near(price, ma.ma128, 0.02) || near(price, ma.ma225, 0.02);
+
+    const converging = ctx.maSpread != null && ctx.maSpread <= 0.035;
+    const narrowing = ctx.recentRangePct < ctx.olderRangePct * 0.75;
+    const ma20TurnUp = ma.ma20 != null && ma.ma20Prev != null && ma.ma20 > ma.ma20Prev;
+    const overlapLike =
+      m15.ma99 != null &&
+      ma.ma99 != null &&
+      Math.abs(m15.ma99 - ma.ma99) / price <= 0.03;
+    const tightBox = ctx.recentRangePct <= 0.06;
+
+    const brokeOut = quote.high >= ctx.prev20High || price >= ctx.prev10High;
+    const heldAfterBreak = brokeOut && price >= ctx.prev10High * 0.985;
+    const retestHold =
+      brokeOut &&
+      price <= ctx.prev10High * 1.01 &&
+      price >= ctx.prev10High * 0.985;
+    const volNotCrazy = ctx.volLast <= ctx.volAvg10 * 2.2;
+
+    const nearPressure =
+      near(price, ctx.prev20High, 0.012) ||
+      near(price, ma.ma99, 0.012) ||
+      near(price, ma.ma128, 0.012) ||
+      near(price, ma.ma225, 0.012) ||
+      near(quote.high, ctx.prev20High, 0.01);
+    const underMaAfterBreak =
+      ctx.failedBreak &&
+      ((ma.ma20 != null && price < ma.ma20) || (ma.ma5 != null && price < ma.ma5));
+
+    const templates = [
+      {
+        id: "buyA",
+        side: "buy",
+        title: "买点 A · 强势回踩",
+        action: "买入计划仓位的 20%–40%。反弹到压力位先看量：量不足做 T，放量站稳可留仓。",
+        checks: [
+          { ok: trendOk, text: "日线趋势未明显破坏" },
+          { ok: pullback15, text: "回踩 99 / 128 / 225 附近" },
+          { ok: shrinkVol, text: "回踩缩量" },
+          { ok: ctx.reclaimAfterPierce || (ctx.touchedMaToday && price >= (ma.ma99 || price) * 0.995), text: "摸线或跌破后快速收回" },
+          { ok: clearStop, text: "下方止损位清楚" },
+        ],
+      },
+      {
+        id: "buyB",
+        side: "buy",
+        title: "买点 B · 收敛变盘",
+        action: "小仓试错，不满仓。靠近支撑买、靠近压力先 T；放量突破站稳再加，跌破收敛下沿止损。",
+        checks: [
+          { ok: converging, text: "99 / 128 / 225 逐渐靠近" },
+          { ok: narrowing, text: "K 线波动变窄" },
+          { ok: ma20TurnUp, text: "20 线开始拐头" },
+          { ok: overlapLike || tightBox, text: "多周期重叠 / 箱体收窄" },
+          { ok: tightBox, text: "上下压力支撑很近" },
+        ],
+      },
+      {
+        id: "buyC",
+        side: "buy",
+        title: "买点 C · 突破回踩确认",
+        action: "回踩确认时买入；前高或下一条均线作第一卖点；二次放量突破可留底仓。",
+        checks: [
+          { ok: brokeOut, text: "已突破关键压力" },
+          { ok: heldAfterBreak, text: "突破后没有快速跌回" },
+          { ok: retestHold || (heldAfterBreak && near(price, ctx.prev10High, 0.015)), text: "回踩原压力不破" },
+          { ok: volNotCrazy, text: "成交量没有明显失控" },
+          { ok: trendOk, text: "大结构仍偏支持" },
+        ],
+      },
+      {
+        id: "sellA",
+        side: "sell",
+        title: "卖点 A · 压力位减仓",
+        action: "卖 1/3 或 1/2。不确定先落袋；若回踩支撑不破，再考虑接回。",
+        checks: [
+          { ok: nearPressure, text: "靠近前高 / 均线 / 平台上沿" },
+          { ok: ctx.weakUpVolume || (quote.changePct >= 0 && shrinkVol), text: "上攻量能不足" },
+          { ok: ctx.fadeFromHigh, text: "盘中冲高回落" },
+          { ok: quote.changePct < 1.5, text: "上攻力度一般，防板块分歧" },
+        ],
+      },
+      {
+        id: "sellB",
+        side: "sell",
+        title: "卖点 B · 突破失败",
+        action: "短线仓先走，中线至少减仓；等重新站稳再考虑，不提前幻想。",
+        checks: [
+          { ok: ctx.failedBreak && ctx.volLast > ctx.volAvg10, text: "放量突破失败迹象" },
+          { ok: underMaAfterBreak, text: "突破后跌回均线下方" },
+          { ok: ctx.failedBreak && price < ctx.prev10High, text: "原压力未转支撑" },
+          { ok: ctx.failedBreak && quote.changePct <= 0, text: "反弹尚未重新站上" },
+        ],
+      },
+    ];
+
+    return templates
+      .map((t) => {
+        const hit = t.checks.filter((c) => c.ok).length;
+        const score = Math.round((hit / t.checks.length) * 100);
+        return { ...t, hit, score };
+      })
+      .sort((a, b) => b.score - a.score || (a.side === "buy" ? -1 : 1));
+  }
+
+  function renderReviewResult(info, quote, ranked) {
+    const best = ranked[0];
+    const strong = ranked.filter((t) => t.score >= 60);
+    const primary = strong[0] || best;
+    const cls = quote.change >= 0 ? "price-up" : "price-down";
+    const sign = quote.change >= 0 ? "+" : "";
+
+    const cards = ranked
+      .map((t) => {
+        const checks = t.checks
+          .map((c) => `<li class="${c.ok ? "check-ok" : "check-no"}">${c.ok ? "符合" : "未明"} · ${c.text}</li>`)
+          .join("");
+        return `
+          <article class="match-item" data-id="${t.id}">
+            <header>
+              <h4>${t.title}</h4>
+              <div class="match-score">匹配 ${t.score}%（${t.hit}/${t.checks.length}）</div>
+            </header>
+            <ul>${checks}</ul>
+            <div class="action-box"><strong>操作建议：</strong>${t.action}</div>
+          </article>
+        `;
+      })
+      .join("");
+
+    return `
+      <div class="result-head">
+        <div>
+          <h3>${quote.name} <span style="color:var(--muted);font-size:0.9rem;">${info.type} · ${info.name}</span></h3>
+          <div class="${cls}" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;">
+            ${quote.price.toFixed(2)}
+            <span style="font-size:1rem;">${sign}${quote.change.toFixed(2)} (${sign}${quote.changePct.toFixed(2)}%)</span>
+          </div>
+        </div>
+      </div>
+      <div class="advice-banner" data-side="${primary.side}">
+        <div class="eyebrow">${primary.side === "buy" ? "Buy Advice" : "Sell Advice"} · 当前更贴近</div>
+        <h3>${primary.title}</h3>
+        <p>${primary.action}</p>
+        <p>匹配度 ${primary.score}%。请对照下方清单逐条复核，尤其是“未明”项要人工确认量能与板块。</p>
+      </div>
+      <div class="match-list">${cards}</div>
+      <p style="font-size:0.82rem;color:var(--muted);">复盘模板仅供 Miranda 个人学习，不构成投资建议。板块支持/分歧需结合盘面人工判断。</p>
+    `;
+  }
+
+  function highlightTemplateCards(ranked) {
+    const hotId = (ranked.find((t) => t.score >= 60) || ranked[0] || {}).id;
+    document.querySelectorAll(".template-card").forEach((card, idx) => {
+      const map = ["buyA", "buyB", "buyC", "sellA", "sellB"];
+      card.classList.toggle("is-hot", map[idx] === hotId);
+    });
+  }
+
+  async function runReview() {
+    const input = document.getElementById("reviewInput");
+    const result = document.getElementById("reviewResult");
+    const loading = document.getElementById("reviewLoading");
+    const error = document.getElementById("reviewError");
+
+    result.hidden = true;
+    error.hidden = true;
+    const code = input.value.trim();
+    if (!code) {
+      error.hidden = false;
+      error.textContent = "请输入测试股票代码";
+      return;
+    }
+
+    const info = getSecId(code);
+    if (!info || !info.symbol) {
+      error.hidden = false;
+      error.textContent = "请输入可复盘的股票 / 指数代码（板块代码暂不支持完整复盘）。";
+      return;
+    }
+
+    loading.hidden = false;
+    loading.textContent = "拉取行情并对照模板...";
+    try {
+      const quote = await fetchQuote(info);
+      loading.textContent = "计算均线与量能...";
+      const klines = await fetchDayKlines(info.symbol);
+      const m15 = await fetchMinuteCloses(info.symbol, 15, 250);
+      const ctx = buildContext(quote, klines, m15);
+      const ranked = matchTemplates(ctx);
+      result.hidden = false;
+      result.innerHTML = renderReviewResult(info, { ...quote, name: quote.name }, ranked);
+      highlightTemplateCards(ranked);
+      // sync into technical lab for convenience
+      document.getElementById("stockInput").value = code;
+    } catch (e) {
+      error.hidden = false;
+      error.textContent = e.message || "复盘失败";
+    } finally {
+      loading.hidden = true;
+    }
+  }
+
+  document.getElementById("reviewBtn").addEventListener("click", runReview);
+  document.getElementById("reviewInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runReview();
+  });
+  document.querySelectorAll("[data-review]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.getElementById("reviewInput").value = btn.dataset.review;
+      runReview();
+    });
+  });
+
   // ---------- Index chart ----------
   function showIdxLoading(msg) {
     const el = document.getElementById("idxLoading");
