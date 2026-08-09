@@ -303,9 +303,15 @@
       <div class="wrap">
         <div class="section-label">06 / Review</div>
         <h2>复盘台 · 模板测试</h2>
-        <p class="section-lead">输入测试股票代码，对照买点 A/B/C 与卖点 A/B，自动给出更贴近的复盘建议与操作要点。</p>
+        <p class="section-lead">先判断「建议买 / 不建议买」，再按你的持仓情况给出观望、做 T、减仓或分批计划。</p>
 
         <div class="tool-panel">
+          <div class="hold-status" id="holdStatus" role="radiogroup" aria-label="当前持仓情况">
+            <span class="hold-label">当前持仓</span>
+            <label class="hold-option"><input type="radio" name="holdStatus" value="flat" checked /> 空仓</label>
+            <label class="hold-option"><input type="radio" name="holdStatus" value="light" /> 已有轻仓</label>
+            <label class="hold-option"><input type="radio" name="holdStatus" value="heavy" /> 已有重仓</label>
+          </div>
           <div class="tool-row">
             <input id="reviewInput" type="text" placeholder="测试股票代码，如 600519 / 300750 / 688981" autocomplete="off" />
             <button class="btn btn-primary" id="reviewBtn" type="button">开始复盘</button>
