@@ -515,6 +515,160 @@ tr:last-child td {
   padding: clamp(1.2rem, 3vw, 1.8rem);
 }
 
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.template-card {
+  border: 1px solid var(--line);
+  background: var(--white);
+  padding: 1.1rem 1.15rem 1.2rem;
+}
+
+.template-card[data-side="buy"] {
+  border-top: 3px solid var(--teal);
+}
+
+.template-card[data-side="sell"] {
+  border-top: 3px solid var(--rise);
+}
+
+.template-card.is-hot {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+  background: linear-gradient(180deg, rgba(201, 149, 42, 0.08), var(--white) 40%);
+}
+
+.template-tag {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.template-card h3 {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  margin-bottom: 0.7rem;
+}
+
+.template-card h4 {
+  font-size: 0.86rem;
+  margin: 0.65rem 0 0.3rem;
+  color: var(--ink-soft);
+}
+
+.template-card ul {
+  padding-left: 1.05rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.template-card li + li {
+  margin-top: 0.22rem;
+}
+
+.advice-banner {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--line);
+  background: linear-gradient(135deg, rgba(15, 122, 100, 0.08), rgba(201, 149, 42, 0.08));
+}
+
+.advice-banner[data-side="sell"] {
+  background: linear-gradient(135deg, rgba(194, 59, 42, 0.08), rgba(201, 149, 42, 0.08));
+}
+
+.advice-banner .eyebrow {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.advice-banner h3 {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+}
+
+.advice-banner p {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.match-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.match-item {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  padding: 0.85rem 0.95rem;
+}
+
+.match-item header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.match-item h4 {
+  font-family: var(--font-serif);
+  font-size: 1.02rem;
+}
+
+.match-score {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: var(--teal-deep);
+}
+
+.match-item ul {
+  padding-left: 1.05rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.match-item li + li {
+  margin-top: 0.2rem;
+}
+
+.check-ok {
+  color: var(--fall);
+}
+
+.check-no {
+  color: var(--muted);
+}
+
+.action-box {
+  margin-top: 0.7rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--line);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.playbook {
+  margin: 1rem 0 0.5rem;
+}
+
+.playbook .plain-block ul {
+  margin-top: 0.35rem;
+}
+
 .tool-row {
   display: flex;
   flex-wrap: wrap;
@@ -659,13 +813,160 @@ tr:last-child td {
   max-width: 40rem;
 }
 
+/* ---------- Guide page ---------- */
+.guide-page {
+  background:
+    radial-gradient(900px 500px at 0% 0%, rgba(15, 122, 100, 0.1), transparent 50%),
+    linear-gradient(180deg, #f5faf7 0%, var(--paper) 35%, #e7f0ea 100%);
+}
+
+.guide-hero {
+  padding: 7.5rem 0 2.5rem;
+}
+
+.guide-kicker {
+  font-family: var(--font-display);
+  letter-spacing: 0.18em;
+  font-size: 0.85rem;
+  color: var(--teal-deep);
+  margin-bottom: 0.6rem;
+}
+
+.guide-hero h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.9rem, 4vw, 2.8rem);
+  margin-bottom: 0.8rem;
+}
+
+.guide-lead {
+  max-width: 40rem;
+  color: var(--muted);
+}
+
+.guide-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+  padding-bottom: 3rem;
+}
+
+.guide-toc {
+  position: sticky;
+  top: 4.5rem;
+  max-height: calc(100vh - 5.5rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  background: rgba(248, 251, 249, 0.9);
+  backdrop-filter: blur(8px);
+}
+
+.guide-toc-title {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.7rem;
+}
+
+.guide-toc ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.guide-toc a {
+  display: block;
+  font-size: 0.84rem;
+  color: var(--muted);
+  line-height: 1.4;
+  padding: 0.2rem 0;
+  border-left: 2px solid transparent;
+  padding-left: 0.55rem;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.guide-toc a:hover,
+.guide-toc a.is-active {
+  color: var(--teal-deep);
+  border-left-color: var(--teal);
+}
+
+.guide-main {
+  min-width: 0;
+}
+
+.guide-block {
+  padding: 1.6rem 0 1.8rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.guide-block h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+  margin-bottom: 0.75rem;
+}
+
+.guide-block h3 {
+  font-family: var(--font-serif);
+  font-size: 1.08rem;
+  margin: 1rem 0 0.4rem;
+}
+
+.guide-block p,
+.guide-block li {
+  color: var(--muted);
+}
+
+.guide-block p + p,
+.guide-block ul,
+.guide-block ol {
+  margin-top: 0.7rem;
+}
+
+.guide-block ul,
+.guide-steps {
+  padding-left: 1.15rem;
+}
+
+.guide-block li + li,
+.guide-steps li + li {
+  margin-top: 0.35rem;
+}
+
+.guide-steps {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.nav-links a[aria-current="page"] {
+  color: var(--teal-deep);
+}
+
+@media (max-width: 960px) {
+  .guide-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-toc {
+    position: relative;
+    top: 0;
+    max-height: none;
+  }
+}
+
 @media (max-width: 760px) {
   .nav-links {
     display: none;
   }
 
   .split,
-  .mantra-grid {
+  .mantra-grid,
+  .template-grid {
     grid-template-columns: 1fr;
   }
 

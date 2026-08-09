@@ -255,9 +255,11 @@
         score >= 45 ? "中性震荡，适合控仓与做 T" :
         "偏空防守，先保住仓位弹性";
 
-      const pct = (v) => (v == null ? "--" : v.toFixed(2));
       const cls = change >= 0 ? "price-up" : "price-down";
       const sign = change >= 0 ? "+" : "";
+      const ctx = buildContext(quote, klines, c15);
+      const ranked = matchTemplates(ctx);
+      const playbook = buildPlaybook(ctx, ranked);
 
       result.hidden = false;
       result.innerHTML = `
@@ -292,7 +294,14 @@
           对 MA225：${trendLabel(price, current.ma225)}
           ${m15.ma99 != null ? `<br />做 T 参考：靠近 15-99(${pct(m15.ma99)}) 找买点，靠近 15-225(${pct(m15.ma225)}) 找卖点。` : ""}
         </div>
-        <p style="font-size:0.82rem;color:var(--muted);margin-top:0.8rem;">自动分析仅供个人学习参考，不构成投资建议。</p>
+        <div class="advice-banner" data-side="${playbook.primary.side}" style="margin-top:1rem;">
+          <div class="eyebrow">综合买卖建议</div>
+          <h3>${playbook.primary.title}</h3>
+          <p>${playbook.primary.action}</p>
+          <p>建议风格：${playbook.style} · 匹配 ${playbook.primary.score}%</p>
+        </div>
+        ${renderPlaybookHtml(playbook)}
+        <p style="font-size:0.82rem;color:var(--muted);margin-top:0.8rem;">自动分析仅供个人学习参考，不构成投资建议。更完整模板清单见「复盘台」。</p>
       `;
     } catch (e) {
       error.hidden = false;
@@ -310,6 +319,531 @@
     btn.addEventListener("click", () => {
       document.getElementById("stockInput").value = btn.dataset.fill;
       analyzeStock();
+    });
+  });
+
+  // ---------- Review engine (knowledge embedded, not displayed as docs) ----------
+  // Internal playbook reference (Yange framework): style -> pool -> structure ->
+  // key level -> position sizing -> review. MA5/20/99/128/225; day/120/15/5 roles;
+  // support buy / pressure sell / confirm then 格局; sell 1/3~1/2 when unsure.
+  function near(price, level, pct = 0.015) {
+    if (price == null || level == null || level === 0) return false;
+    return Math.abs(price - level) / level <= pct;
+  }
+
+  function avg(arr) {
+    if (!arr.length) return 0;
+    return arr.reduce((a, b) => a + b, 0) / arr.length;
+  }
+
+  function pct(v) {
+    return v == null || Number.isNaN(v) ? "--" : Number(v).toFixed(2);
+  }
+
+  function buildContext(quote, klines, m15Closes) {
+    const closes = klines.map((k) => k.close);
+    const highs = klines.map((k) => k.high);
+    const lows = klines.map((k) => k.low);
+    const vols = klines.map((k) => k.volume || 0);
+    const last = closes.length - 1;
+    const ma5 = calcMA(closes, 5);
+    const ma20 = calcMA(closes, 20);
+    const ma99 = calcMA(closes, 99);
+    const ma128 = calcMA(closes, 128);
+    const ma225 = calcMA(closes, 225);
+
+    const recent = klines.slice(-8);
+    const prev20High = Math.max(...highs.slice(-21, -1));
+    const prev10High = Math.max(...highs.slice(-11, -1));
+    const prev20Low = Math.min(...lows.slice(-21, -1));
+    const recentRange = Math.max(...recent.map((k) => k.high)) - Math.min(...recent.map((k) => k.low));
+    const older = klines.slice(-20, -8);
+    const olderRange = Math.max(...older.map((k) => k.high)) - Math.min(...older.map((k) => k.low));
+    const volAvg10 = avg(vols.slice(-11, -1));
+    const volLast = vols[last] || 0;
+    const volPrev = vols[last - 1] || 0;
+    const dayAmp = quote.high > 0 && quote.low > 0 ? (quote.high - quote.low) / quote.low : 0;
+    const avgAmp5 = avg(
+      klines.slice(-5).map((k) => (k.low > 0 ? (k.high - k.low) / k.low : 0))
+    );
+
+    const maBundle = [ma99[last], ma128[last], ma225[last]].filter((v) => v != null);
+    const maSpread =
+      maBundle.length === 3
+        ? (Math.max(...maBundle) - Math.min(...maBundle)) / quote.price
+        : null;
+
+    // First-touch heuristic: recently above the MA, now first approach within ~8 bars.
+    function firstTouch(maArr, lookback = 12) {
+      const lv = maArr[last];
+      if (lv == null) return false;
+      const nowNear = near(quote.price, lv, 0.015) || near(quote.low, lv, 0.015);
+      if (!nowNear) return false;
+      let priorTouches = 0;
+      for (let i = last - lookback; i < last; i++) {
+        if (i < 0 || maArr[i] == null) continue;
+        if (lows[i] <= maArr[i] * 1.01 && highs[i] >= maArr[i] * 0.99) priorTouches++;
+      }
+      const wasAbove = closes.slice(last - lookback, last).filter((c, idx) => {
+        const i = last - lookback + idx;
+        return maArr[i] != null && c > maArr[i] * 1.01;
+      }).length;
+      return priorTouches <= 1 && wasAbove >= 3;
+    }
+
+    let m15 = { ma5: null, ma20: null, ma99: null, ma128: null, ma225: null, last: null };
+    if (m15Closes && m15Closes.length) {
+      const i = m15Closes.length - 1;
+      m15 = {
+        ma5: calcMA(m15Closes, 5)[i],
+        ma20: calcMA(m15Closes, 20)[i],
+        ma99: calcMA(m15Closes, 99)[i],
+        ma128: calcMA(m15Closes, 128)[i],
+        ma225: calcMA(m15Closes, 225)[i],
+        last: m15Closes[i],
+      };
+    }
+
+    const bullCount = [
+      ma5[last] != null && ma20[last] != null && ma5[last] >= ma20[last],
+      ma20[last] != null && ma99[last] != null && ma20[last] >= ma99[last],
+      ma99[last] != null && ma128[last] != null && ma99[last] >= ma128[last],
+      ma128[last] != null && ma225[last] != null && ma128[last] >= ma225[last],
+    ].filter(Boolean).length;
+
+    const arrangement =
+      bullCount >= 3 ? "偏多头" : bullCount <= 1 ? "偏空头" : "粘合 / 过渡";
+
+    const nearMa225 = near(quote.price, ma225[last], 0.02);
+    const underLongPressure = ma225[last] != null && quote.price < ma225[last] && nearMa225;
+    const structureRepair =
+      ma225[last] != null &&
+      quote.price < ma225[last] * 1.03 &&
+      quote.price > (ma99[last] || quote.price) * 0.97;
+
+    return {
+      quote,
+      klines,
+      last,
+      price: quote.price,
+      ma: {
+        ma5: ma5[last],
+        ma20: ma20[last],
+        ma99: ma99[last],
+        ma128: ma128[last],
+        ma225: ma225[last],
+        ma5Prev: ma5[last - 1],
+        ma20Prev: ma20[last - 1],
+        ma99Prev: ma99[last - 1],
+      },
+      m15,
+      prev20High,
+      prev10High,
+      prev20Low,
+      recentRangePct: recentRange / quote.price,
+      olderRangePct: olderRange / quote.price || 0.01,
+      volAvg10,
+      volLast,
+      volPrev,
+      maSpread,
+      dayAmp,
+      avgAmp5,
+      arrangement,
+      bullCount,
+      nearMa225,
+      underLongPressure,
+      structureRepair,
+      firstTouch99: firstTouch(ma99),
+      firstTouch128: firstTouch(ma128),
+      firstTouch225: firstTouch(ma225),
+      shrinkVol: volLast > 0 && volLast < volAvg10 * 0.85,
+      expandVol: volLast > volAvg10 * 1.2,
+      hugeVolNoRise: volLast > volAvg10 * 1.8 && quote.changePct <= 0.3,
+      shrinkBreakout: quote.high >= prev10High && volLast > 0 && volLast < volAvg10 * 0.95,
+      touchedMaToday:
+        near(quote.low, ma99[last], 0.012) ||
+        near(quote.low, ma128[last], 0.012) ||
+        near(quote.low, ma225[last], 0.012) ||
+        near(quote.price, ma99[last], 0.012) ||
+        near(quote.price, ma128[last], 0.012) ||
+        near(quote.price, ma225[last], 0.012),
+      reclaimAfterPierce: (() => {
+        const levels = [ma99[last], ma128[last], ma225[last]].filter(Boolean);
+        return levels.some((lv) => quote.low < lv && quote.price >= lv * 0.998);
+      })(),
+      fadeFromHigh: quote.high > 0 ? (quote.high - quote.price) / quote.high >= 0.012 : false,
+      weakUpVolume: quote.changePct > 0 && volLast > 0 && volLast < volAvg10 * 0.9,
+      failedBreak: quote.high >= prev10High * 0.998 && quote.price < prev10High * 0.995,
+      tFriendly: avgAmp5 >= 0.03 || dayAmp >= 0.035,
+      tPoor: avgAmp5 > 0 && avgAmp5 < 0.02,
+    };
+  }
+
+  function nearestLevels(ctx) {
+    const { price, ma, prev20High, prev20Low } = ctx;
+    const supports = [
+      { name: "MA20", v: ma.ma20 },
+      { name: "MA99", v: ma.ma99 },
+      { name: "MA128", v: ma.ma128 },
+      { name: "MA225", v: ma.ma225 },
+      { name: "近20日低", v: prev20Low },
+    ]
+      .filter((x) => x.v != null && x.v <= price * 1.002)
+      .sort((a, b) => b.v - a.v);
+    const pressures = [
+      { name: "前高/平台", v: prev20High },
+      { name: "MA99", v: ma.ma99 },
+      { name: "MA128", v: ma.ma128 },
+      { name: "MA225", v: ma.ma225 },
+      { name: "MA20", v: ma.ma20 },
+    ]
+      .filter((x) => x.v != null && x.v >= price * 0.998)
+      .sort((a, b) => a.v - b.v);
+    return {
+      support: supports[0] || null,
+      pressure: pressures[0] || null,
+    };
+  }
+
+  function matchTemplates(ctx) {
+    const { price, ma, m15, quote } = ctx;
+    const trendOk =
+      (price >= (ma.ma20 || price) * 0.985 || (ma.ma20 != null && ma.ma20 >= (ma.ma20Prev || ma.ma20))) &&
+      price >= (ma.ma225 || price) * 0.97;
+
+    const structureOk = trendOk || ctx.structureRepair || ctx.arrangement !== "偏空头";
+    const pullback15 =
+      (m15.ma99 != null && near(m15.last, m15.ma99, 0.012)) ||
+      (m15.ma128 != null && near(m15.last, m15.ma128, 0.012)) ||
+      (m15.ma225 != null && near(m15.last, m15.ma225, 0.012)) ||
+      ctx.touchedMaToday;
+    const firstPullback = ctx.firstTouch99 || ctx.firstTouch128 || ctx.firstTouch225 || (pullback15 && structureOk);
+    const shrinkVol = ctx.shrinkVol;
+    const clearStop =
+      near(price, ma.ma99, 0.02) || near(price, ma.ma128, 0.02) || near(price, ma.ma225, 0.02) || near(price, ma.ma20, 0.015);
+
+    const converging = ctx.maSpread != null && ctx.maSpread <= 0.035;
+    const narrowing = ctx.recentRangePct < ctx.olderRangePct * 0.75;
+    const ma20TurnUp = ma.ma20 != null && ma.ma20Prev != null && ma.ma20 > ma.ma20Prev;
+    const overlapLike =
+      m15.ma99 != null &&
+      ma.ma99 != null &&
+      Math.abs(m15.ma99 - ma.ma99) / price <= 0.03;
+    const tightBox = ctx.recentRangePct <= 0.06;
+
+    const brokeOut = quote.high >= ctx.prev20High || price >= ctx.prev10High;
+    const heldAfterBreak = brokeOut && price >= ctx.prev10High * 0.985;
+    const retestHold =
+      brokeOut &&
+      price <= ctx.prev10High * 1.01 &&
+      price >= ctx.prev10High * 0.985;
+    const volHealthyBreak = ctx.expandVol && !ctx.shrinkBreakout && !ctx.hugeVolNoRise;
+    const volNotCrazy = ctx.volLast <= ctx.volAvg10 * 2.2;
+
+    const nearPressure =
+      near(price, ctx.prev20High, 0.012) ||
+      near(price, ma.ma99, 0.012) ||
+      near(price, ma.ma128, 0.012) ||
+      near(price, ma.ma225, 0.012) ||
+      near(quote.high, ctx.prev20High, 0.01) ||
+      ctx.underLongPressure;
+    const underMaAfterBreak =
+      ctx.failedBreak &&
+      ((ma.ma20 != null && price < ma.ma20) || (ma.ma5 != null && price < ma.ma5));
+
+    const templates = [
+      {
+        id: "buyA",
+        side: "buy",
+        title: "买点 A · 强势回踩",
+        action: "第一笔只买计划仓位 30%–40%。反弹到压力先看量：量不足做 T；放量站稳可留观察仓。破位不再补仓。",
+        checks: [
+          { ok: structureOk, text: "日线 / 结构趋势未明显破坏" },
+          { ok: firstPullback || pullback15, text: "偏第一次回踩 99 / 128 / 225" },
+          { ok: shrinkVol, text: "回踩缩量（卖压不大）" },
+          { ok: ctx.reclaimAfterPierce || (ctx.touchedMaToday && price >= (ma.ma99 || price) * 0.995), text: "摸线或刺破后快速收回" },
+          { ok: clearStop, text: "下方止损位清楚" },
+        ],
+      },
+      {
+        id: "buyB",
+        side: "buy",
+        title: "买点 B · 收敛变盘",
+        action: "收敛区小仓试错，不满仓。靠近支撑买、靠近压力先 T；真正放量突破并站稳后再加；跌破收敛下沿立刻认错。",
+        checks: [
+          { ok: converging, text: "99 / 128 / 225 成本压缩靠近" },
+          { ok: narrowing || tightBox, text: "波动变窄，进入方向选择题" },
+          { ok: ma20TurnUp, text: "20 线开始拐头" },
+          { ok: overlapLike || tightBox, text: "多周期重叠 / 箱体收窄" },
+          { ok: !ctx.hugeVolNoRise, text: "未见巨量滞涨破坏收敛" },
+        ],
+      },
+      {
+        id: "buyC",
+        side: "buy",
+        title: "买点 C · 突破回踩确认",
+        action: "不在第一次冲动突破满仓。回踩原压力不破时介入；前高或下一条均线作第一卖点；二次放量突破可保留底仓观察格局。",
+        checks: [
+          { ok: brokeOut, text: "已突破关键压力" },
+          { ok: heldAfterBreak && !ctx.failedBreak, text: "突破后没有快速跌回" },
+          { ok: retestHold || (heldAfterBreak && near(price, ctx.prev10High, 0.015)), text: "回踩原压力转为支撑确认" },
+          { ok: volHealthyBreak || volNotCrazy, text: "量能健康，非缩量假突破 / 巨量失控" },
+          { ok: structureOk, text: "大结构仍偏支持" },
+        ],
+      },
+      {
+        id: "sellA",
+        side: "sell",
+        title: "卖点 A · 压力位减仓",
+        action: "不确定就卖 1/3 或 1/2 落袋。若回踩支撑不破，再滚动接回；无量冲高不要幻想午后一定继续。",
+        checks: [
+          { ok: nearPressure, text: "靠近前高 / 99·128·225 / 平台上沿" },
+          { ok: ctx.weakUpVolume || ctx.shrinkBreakout || (quote.changePct >= 0 && shrinkVol), text: "上攻量能不足或缩量冲高" },
+          { ok: ctx.fadeFromHigh || ctx.hugeVolNoRise, text: "冲高回落或巨量不涨" },
+          { ok: quote.changePct < 2 || ctx.underLongPressure, text: "延续性存疑，防分歧兑现" },
+        ],
+      },
+      {
+        id: "sellB",
+        side: "sell",
+        title: "卖点 B · 突破失败",
+        action: "短线仓先走，中线至少减仓。原压力未转支撑前不提前幻想；等重新站稳再谈下一笔。",
+        checks: [
+          { ok: ctx.failedBreak && (ctx.expandVol || ctx.volLast > ctx.volAvg10), text: "放量突破失败迹象" },
+          { ok: underMaAfterBreak, text: "突破后跌回均线下方" },
+          { ok: ctx.failedBreak && price < ctx.prev10High, text: "原压力没有转支撑" },
+          { ok: ctx.failedBreak && quote.changePct <= 0.2, text: "反弹尚未重新站上" },
+        ],
+      },
+    ];
+
+    return templates
+      .map((t) => {
+        const hit = t.checks.filter((c) => c.ok).length;
+        const score = Math.round((hit / t.checks.length) * 100);
+        return { ...t, hit, score };
+      })
+      .sort((a, b) => b.score - a.score || (a.side === "buy" ? -1 : 1));
+  }
+
+  function buildPlaybook(ctx, ranked) {
+    const primary = ranked.find((t) => t.score >= 60) || ranked[0];
+    const levels = nearestLevels(ctx);
+    const supportTxt = levels.support ? `${levels.support.name} ${pct(levels.support.v)}` : "下方需人工标支撑";
+    const pressureTxt = levels.pressure ? `${levels.pressure.name} ${pct(levels.pressure.v)}` : "上方需人工标压力";
+
+    // 格局 vs 做T：120/日线结构改善且突破站稳偏格局；否则短线差价
+    const canGeJu =
+      primary.side === "buy" &&
+      (primary.id === "buyC" || (ctx.arrangement === "偏多头" && !ctx.underLongPressure)) &&
+      primary.score >= 60 &&
+      !ctx.failedBreak &&
+      !ctx.shrinkBreakout;
+
+    const preferT =
+      !canGeJu &&
+      (ctx.tFriendly || primary.id === "buyB" || primary.side === "sell" || ctx.underLongPressure || ctx.arrangement !== "偏多头");
+
+    let style = "观望 / 写计划";
+    if (primary.side === "sell" && primary.score >= 60) style = "减仓锁定 · 滚动观察";
+    else if (canGeJu) style = "中线观察仓 · 可格局一部分";
+    else if (preferT && ctx.tFriendly) style = "短线做 T / 波段差价";
+    else if (preferT && ctx.tPoor) style = "振幅偏小，谨慎做 T，偏计划仓";
+    else if (primary.side === "buy" && primary.score >= 60) style = "分批试错 · 先拿底仓";
+
+    const buyPlan =
+      primary.side === "buy"
+        ? [
+            `第一笔：关键支撑附近试仓 30%–40%（参考 ${supportTxt}）。`,
+            "第二笔：若回落下一支撑且大逻辑未破，再补 30%–40%；破位停止补仓。",
+            "第三笔：仅在突破后横盘确认 / 二次放量突破时补剩余。",
+            canGeJu
+              ? "风格：突破确认后可保留部分仓位观察二次上攻，不要在第一个小压力全部卖飞。"
+              : "风格：更适合做 T 或波段差价，未确认 120/日线级结构前不要无脑格局。",
+          ]
+        : [
+            "已有仓位：压力区先卖 1/3 或 1/2，降低心理噪音。",
+            "若回踩支撑不破，再考虑接回，形成滚动交易。",
+            "破位或假突破：短线仓先走，中线至少减仓，不提前幻想回补。",
+          ];
+
+    const sellPlan = [
+      `第一卖点 / 压力观察：${pressureTxt}。`,
+      ctx.weakUpVolume || ctx.shrinkBreakout
+        ? "量能偏弱：靠近压力优先落袋，不赌午后一定继续。"
+        : "若放量突破并站稳，可留底仓，等二次确认。",
+      ctx.tFriendly
+        ? "日内振幅够，适合围绕支撑压力做 T（尽量覆盖手续费与滑点，2% 以内慎做）。"
+        : "振幅一般，做 T 空间有限，减少无效抖动交易。",
+    ];
+
+    const invalidation = [
+      levels.support
+        ? `若放量跌破 ${levels.support.name}（${pct(levels.support.v)}）且收不回，当笔逻辑失效。`
+        : "若关键支撑放量跌破且收不回，当笔逻辑失效。",
+      "建仓期少做 T，避免把低成本筹码卖飞；只有破位或达到预设盈利才卖。",
+      "主力线/板块/主营是否贴合主线，必须人工确认后再加仓。",
+    ];
+
+    const manualGate = [
+      "F10：主营是否真贴合题材，而非只是蹭概念。",
+      "主线：当前是主线票、梯队博弈，还是杂毛。",
+      "板块与大盘：个股强弱是否得到板块支持。",
+      "风格：长线 / 中线 / 短线 / 做 T 不要混用同一套预期。",
+    ];
+
+    return {
+      primary,
+      style,
+      supportTxt,
+      pressureTxt,
+      canGeJu,
+      buyPlan,
+      sellPlan,
+      invalidation,
+      manualGate,
+      arrangement: ctx.arrangement,
+    };
+  }
+
+  function renderPlaybookHtml(playbook) {
+    const list = (items) => items.map((x) => `<li>${x}</li>`).join("");
+    return `
+      <div class="playbook">
+        <div class="metric-grid">
+          <div class="metric"><span>建议风格</span><strong>${playbook.style}</strong></div>
+          <div class="metric"><span>均线结构</span><strong>${playbook.arrangement}</strong></div>
+          <div class="metric"><span>参考支撑</span><strong>${playbook.supportTxt}</strong></div>
+          <div class="metric"><span>参考压力</span><strong>${playbook.pressureTxt}</strong></div>
+        </div>
+        <div class="split" style="margin-top:1rem;">
+          <div class="plain-block">
+            <h3>仓位计划</h3>
+            <ul>${list(playbook.buyPlan)}</ul>
+          </div>
+          <div class="plain-block">
+            <h3>卖出 / 做 T</h3>
+            <ul>${list(playbook.sellPlan)}</ul>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:1rem;">
+          <strong>认错位置：</strong>
+          <ul style="margin-top:0.4rem;">${list(playbook.invalidation)}</ul>
+        </div>
+        <div class="callout quote" style="margin-top:0.8rem;">
+          <strong>下单前人工闸门（系统无法自动判断）：</strong>
+          <ul style="margin-top:0.4rem;">${list(playbook.manualGate)}</ul>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderReviewResult(info, quote, ranked, ctx) {
+    const playbook = buildPlaybook(ctx, ranked);
+    const primary = playbook.primary;
+    const cls = quote.change >= 0 ? "price-up" : "price-down";
+    const sign = quote.change >= 0 ? "+" : "";
+
+    const cards = ranked
+      .map((t) => {
+        const checks = t.checks
+          .map((c) => `<li class="${c.ok ? "check-ok" : "check-no"}">${c.ok ? "符合" : "未明"} · ${c.text}</li>`)
+          .join("");
+        return `
+          <article class="match-item" data-id="${t.id}">
+            <header>
+              <h4>${t.title}</h4>
+              <div class="match-score">匹配 ${t.score}%（${t.hit}/${t.checks.length}）</div>
+            </header>
+            <ul>${checks}</ul>
+            <div class="action-box"><strong>操作建议：</strong>${t.action}</div>
+          </article>
+        `;
+      })
+      .join("");
+
+    return `
+      <div class="result-head">
+        <div>
+          <h3>${quote.name} <span style="color:var(--muted);font-size:0.9rem;">${info.type} · ${info.name}</span></h3>
+          <div class="${cls}" style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;">
+            ${quote.price.toFixed(2)}
+            <span style="font-size:1rem;">${sign}${quote.change.toFixed(2)} (${sign}${quote.changePct.toFixed(2)}%)</span>
+          </div>
+        </div>
+      </div>
+      <div class="advice-banner" data-side="${primary.side}">
+        <div class="eyebrow">${primary.side === "buy" ? "Buy Advice" : "Sell Advice"} · 综合模板 + 仓位框架</div>
+        <h3>${primary.title}</h3>
+        <p>${primary.action}</p>
+        <p>匹配度 ${primary.score}%。建议风格：${playbook.style}。请先过人工闸门，再执行分批计划。</p>
+      </div>
+      ${renderPlaybookHtml(playbook)}
+      <div class="match-list">${cards}</div>
+      <p style="font-size:0.82rem;color:var(--muted);">建议引擎综合均线结构、量价、支撑压力与仓位纪律生成，仅供 Miranda 个人学习，不构成投资建议。</p>
+    `;
+  }
+
+  function highlightTemplateCards(ranked) {
+    const hotId = (ranked.find((t) => t.score >= 60) || ranked[0] || {}).id;
+    document.querySelectorAll(".template-card").forEach((card, idx) => {
+      const map = ["buyA", "buyB", "buyC", "sellA", "sellB"];
+      card.classList.toggle("is-hot", map[idx] === hotId);
+    });
+  }
+
+  async function runReview() {
+    const input = document.getElementById("reviewInput");
+    const result = document.getElementById("reviewResult");
+    const loading = document.getElementById("reviewLoading");
+    const error = document.getElementById("reviewError");
+
+    result.hidden = true;
+    error.hidden = true;
+    const code = input.value.trim();
+    if (!code) {
+      error.hidden = false;
+      error.textContent = "请输入测试股票代码";
+      return;
+    }
+
+    const info = getSecId(code);
+    if (!info || !info.symbol) {
+      error.hidden = false;
+      error.textContent = "请输入可复盘的股票 / 指数代码（板块代码暂不支持完整复盘）。";
+      return;
+    }
+
+    loading.hidden = false;
+    loading.textContent = "拉取行情并对照模板...";
+    try {
+      const quote = await fetchQuote(info);
+      loading.textContent = "计算均线与量能...";
+      const klines = await fetchDayKlines(info.symbol);
+      const m15 = await fetchMinuteCloses(info.symbol, 15, 250);
+      const ctx = buildContext(quote, klines, m15);
+      const ranked = matchTemplates(ctx);
+      result.hidden = false;
+      result.innerHTML = renderReviewResult(info, { ...quote, name: quote.name }, ranked, ctx);
+      highlightTemplateCards(ranked);
+      // sync into technical lab for convenience
+      document.getElementById("stockInput").value = code;
+    } catch (e) {
+      error.hidden = false;
+      error.textContent = e.message || "复盘失败";
+    } finally {
+      loading.hidden = true;
+    }
+  }
+
+  document.getElementById("reviewBtn").addEventListener("click", runReview);
+  document.getElementById("reviewInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runReview();
+  });
+  document.querySelectorAll("[data-review]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.getElementById("reviewInput").value = btn.dataset.review;
+      runReview();
     });
   });
 
