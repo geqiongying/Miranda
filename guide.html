@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MIRANDA · 均线与周期知识详解</title>
+  <meta name="description" content="Miranda 私人均线与周期学习详解：MA5/20/99/128/225、多周期分工、支撑压力、收敛变盘与做T。" />
+  <meta name="author" content="Miranda Ge" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body class="guide-page">
+  <nav class="site-nav" id="siteNav">
+    <a class="brand-mark" href="./index.html">MIRANDA</a>
+    <ul class="nav-links">
+      <li><a href="./index.html#system">五线</a></li>
+      <li><a href="./index.html#review">复盘</a></li>
+      <li><a href="./guide.html" aria-current="page">详解</a></li>
+      <li><a href="./index.html#lab">工具</a></li>
+    </ul>
+  </nav>
+
+  <header class="guide-hero" id="top">
+    <div class="wrap">
+      <div class="section-label">MIRANDA GUIDE</div>
+      <p class="guide-kicker">均线手记</p>
+      <h1>均线与周期知识详解</h1>
+      <p class="guide-lead">学习股票技术分析中的均线与周期 / 级别概念。任何技术指标只提供观察框架，不构成投资建议，也不能保证涨跌结果。</p>
+    </div>
+  </header>
+
+  <div class="guide-layout wrap">
+    <aside class="guide-toc" aria-label="目录">
+      <div class="guide-toc-title">目录</div>
+      <ol>
+        <li><a href="#g1">5 / 20 / 99 / 128 / 225 是什么</a></li>
+        <li><a href="#g2">参数与 K 线周期</a></li>
+        <li><a href="#g3">均线怎么计算</a></li>
+        <li><a href="#g4">均线为什么有用</a></li>
+        <li><a href="#g5">各参数大致含义</a></li>
+        <li><a href="#g6">周期是什么</a></li>
+        <li><a href="#g7">多周期分工</a></li>
+        <li><a href="#g8">标准分析顺序</a></li>
+        <li><a href="#g9">怎么看支撑</a></li>
+        <li><a href="#g10">怎么看压力</a></li>
+        <li><a href="#g11">粘合、收敛、变盘</a></li>
+        <li><a href="#g12">第一次回踩</a></li>
+        <li><a href="#g13">突破与确认</a></li>
+        <li><a href="#g14">多周期共振</a></li>
+        <li><a href="#g15">均线与量价</a></li>
+        <li><a href="#g16">做 T 用法</a></li>
+        <li><a href="#g17">常见错误</a></li>
+        <li><a href="#g18">完整交易计划例子</a></li>
+        <li><a href="#g19">训练方法</a></li>
+        <li><a href="#g20">最后总结</a></li>
+      </ol>
+    </aside>
+
+    <main class="guide-main">
+      <article class="guide-block" id="g1">
+        <h2>1. 先说结论：5、20、99、128、225 到底是什么</h2>
+        <p>5、20、99、128、225 指的是<strong>移动平均线的参数</strong>。</p>
+        <p>移动平均线英文叫 Moving Average，常见缩写是 MA。含义是：把过去若干根 K 线的收盘价求平均，然后连成一条线。</p>
+        <ul>
+          <li><strong>MA5</strong>：最近 5 根 K 线收盘价的平均值</li>
+          <li><strong>MA20</strong>：最近 20 根 K 线收盘价的平均值</li>
+          <li><strong>MA99</strong>：最近 99 根 K 线收盘价的平均值</li>
+          <li><strong>MA128</strong>：最近 128 根 K 线收盘价的平均值</li>
+          <li><strong>MA225</strong>：最近 225 根 K 线收盘价的平均值</li>
+        </ul>
+        <div class="callout">最容易搞错的一点：它们不是永远固定叫「5 日线、20 日线」。到底是几日、几小时、几分钟，取决于你当前看的 K 线周期。</div>
+      </article>
+
+      <article class="guide-block" id="g2">
+        <h2>2. 均线参数和 K 线周期的关系</h2>
+        <p>行情软件里可切换不同 K 线周期：日 K、周 K、月 K、120 / 60 / 30 / 15 / 5 / 1 分钟 K。均线参数不变，但含义会跟着周期变化。</p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>当前 K 线周期</th>
+                <th>MA5 的含义</th>
+                <th>MA20 的含义</th>
+                <th>MA99 的含义</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>日 K</td><td>最近 5 个交易日均价</td><td>最近 20 个交易日均价</td><td>最近 99 个交易日均价</td></tr>
+              <tr><td>周 K</td><td>最近 5 周均价</td><td>最近 20 周均价</td><td>最近 99 周均价</td></tr>
+              <tr><td>120 分钟 K</td><td>最近 5 根 120 分钟 K 均价</td><td>最近 20 根 120 分钟 K 均价</td><td>最近 99 根 120 分钟 K 均价</td></tr>
+              <tr><td>15 分钟 K</td><td>最近 5 根 15 分钟 K 均价</td><td>最近 20 根 15 分钟 K 均价</td><td>最近 99 根 15 分钟 K 均价</td></tr>
+              <tr><td>5 分钟 K</td><td>最近 5 根 5 分钟 K 均价</td><td>最近 20 根 5 分钟 K 均价</td><td>最近 99 根 5 分钟 K 均价</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="formula">
+          <strong>MA20 = 当前 K 线级别下，最近 20 根 K 线的平均价格</strong>
+          在日 K 图上才叫 20 日线；在 15 分钟图上应叫 15 分钟级别 MA20，不是 20 日线。
+        </div>
+      </article>
+
+      <article class="guide-block" id="g3">
+        <h2>3. 均线怎么计算</h2>
+        <p>以 MA5 为例。假设最近 5 根 K 线收盘价分别是：10.00、10.20、10.40、10.30、10.60。</p>
+        <div class="formula">
+          <strong>MA5 = (10.00 + 10.20 + 10.40 + 10.30 + 10.60) / 5 = 10.30</strong>
+          下一根 K 线收盘后，最早的价格移出，新收盘价加入，再重新计算。这就是「移动平均」：它会随着新 K 线不断滚动变化。
+        </div>
+      </article>
+
+      <article class="guide-block" id="g4">
+        <h2>4. 均线为什么有用</h2>
+        <p>均线不是玄学。它有用，是因为它近似反映了某一批资金的平均成本和行为习惯。</p>
+        <ul>
+          <li><strong>短周期均线</strong>：反映短线资金的成本和情绪</li>
+          <li><strong>中周期均线</strong>：反映波段资金的成本和结构</li>
+          <li><strong>长周期均线</strong>：反映更长时间资金的成本区和趋势背景</li>
+        </ul>
+        <p>当价格接近某条重要均线时，不同资金会做出反应：有人买、有人卖、有人止损、有人加减仓。所以均线经常形成支撑或压力。</p>
+        <div class="callout">注意：均线不是因为「线本身有魔法」，而是因为很多人会在相近位置做类似动作。</div>
+      </article>
+
+      <article class="guide-block" id="g5">
+        <h2>5. 不同均线参数的大致含义</h2>
+        <h3>5：短线情绪线</h3>
+        <p>MA5 很灵敏，贴近当前价格。适合看短线加速、转弱、强势股是否贴线上行、拉升后是否开始跌破。</p>
+        <ul>
+          <li>股价持续在 MA5 上方，说明短线强</li>
+          <li>跌破 MA5 不一定趋势结束，但短线可能开始降温</li>
+          <li>MA5 快速上穿 / 下穿 MA20，短线可能转强 / 转弱</li>
+        </ul>
+        <h3>20：短中线趋势线</h3>
+        <p>常被看作短中线趋势的核心线。日 K 上大约对应一个月交易成本；在 15 / 120 分钟上代表当前级别的短中线节奏。很多强势票会沿 20 线向上走，没有有效跌破，趋势可能还在。</p>
+        <h3>99：中期结构线</h3>
+        <p>比常见 60 日线更慢一点，又没有 225 那么长期。适合看中期压力 / 支撑、均线收敛、阶段变盘、中期结构是否修复。长期被压后放量突破并站稳，可能说明中期结构开始改变。</p>
+        <h3>128：中期结构线，常和 99 配合</h3>
+        <p>单独一条线容易误判。99 与 128 的关系，可判断中期成本是否压缩、是否进入狭窄震荡、压力是否密集。当它们逐渐靠近且股价附近反复横盘，就可能出现收敛结构——收敛不代表一定上涨，代表<strong>快要选方向</strong>。</p>
+        <h3>225：长期结构线</h3>
+        <p>在日 K 上接近一年交易日数量，常作长期趋势或长期成本参考。适合看大级别压力、长期趋势修复、是否从长期弱势里走出来。摸一下就回落，可能只是反弹，不是趋势反转。</p>
+      </article>
+
+      <article class="guide-block" id="g6">
+        <h2>6. 周期是什么：为什么同一只股票有很多种图</h2>
+        <p>周期也叫级别。同一只股票可用不同周期观察：日线看大局，120 分钟看中等趋势结构，15 分钟看交易位置，5 分钟看精确买卖点。它们不是互相矛盾，而是观察距离不同。</p>
+        <div class="callout quote">日线像城市地图；120 分钟像街区地图；15 分钟像路口地图；5 分钟像站在路边看车流。不能只看车流就判断整个城市交通，也不能只看城市地图就决定在哪个路口转弯。</div>
+      </article>
+
+      <article class="guide-block" id="g7">
+        <h2>7. 多周期分工：日线、120 分钟、15 分钟、5 分钟</h2>
+        <div class="split">
+          <div class="plain-block">
+            <h3>日线：看大背景</h3>
+            <p>高位 / 中位 / 低位？上涨、下跌、横盘还是底部修复？长周期均线多头还是空头？离前高、前低、长期均线有多远？日线不适合精确到某一分钟买卖。</p>
+          </div>
+          <div class="plain-block">
+            <h3>120 分钟：看趋势结构</h3>
+            <p>有没有突破长期压制？结构向上还是向下？是否站上重要 120 分钟均线？一次突破是否值得格局？一句话：120 分钟适合判断「这只票有没有走出结构」。</p>
+          </div>
+        </div>
+        <div class="split" style="margin-top:1rem;">
+          <div class="plain-block">
+            <h3>15 分钟：看主要买卖点</h3>
+            <p>支撑 / 压力在哪里？是否第一次回踩重要均线？是否接近做 T 卖点？是否出现收敛变盘？比 5 分钟稳，比 120 分钟灵敏，是制定买卖计划的主战场。</p>
+          </div>
+          <div class="plain-block">
+            <h3>5 分钟：看精确确认</h3>
+            <p>适合看盘中量价、回踩是否缩量、突破是否放量、挂单是否更精确。但噪音大，更适合确认，不适合单独决定方向。</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="guide-block" id="g8">
+        <h2>8. 一个标准分析顺序</h2>
+        <ol class="guide-steps">
+          <li><strong>看日线</strong>：高低位、前高前低、长期均线距离、趋势方向。日线很差时，短线买点要降低预期。</li>
+          <li><strong>看 120 分钟</strong>：长期压制、均线上下、突破后是否站稳。还没突破时，短线拉到压力更要警惕；有效突破才有资格考虑「格局」。</li>
+          <li><strong>看 15 分钟</strong>：最近支撑压力、第一次回踩、均线收敛、做 T 空间。</li>
+          <li><strong>看 5 分钟</strong>：回踩 / 突破量能、买点是否快速拉回、卖点是否冲高回落，用来提高下单精度。</li>
+        </ol>
+      </article>
+
+      <article class="guide-block" id="g9">
+        <h2>9. 均线怎么看支撑</h2>
+        <p>均线在股价下方，可能成为支撑。但不是每条下方均线都是强支撑。</p>
+        <div class="split">
+          <div class="plain-block">
+            <h3>强支撑常见条件</h3>
+            <ul>
+              <li>之前多次在这里反弹</li>
+              <li>回踩缩量</li>
+              <li>回踩后快速拉回</li>
+              <li>下方有其他均线或平台重叠</li>
+              <li>板块没有明显走弱</li>
+              <li>大盘没有系统性风险</li>
+            </ul>
+          </div>
+          <div class="plain-block">
+            <h3>弱支撑常见特征</h3>
+            <ul>
+              <li>一碰就破</li>
+              <li>跌破后反弹无力</li>
+              <li>跌破时放量</li>
+              <li>跌破后原支撑变压力</li>
+              <li>下方没有其他均线承接</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout">支撑买入不是看到线就买。流程应是：确认大周期没坏 → 找到 15 / 120 重要支撑 → 看回踩量能 → 看 5 分钟止跌 → 小仓试错 → 设好跌破后的处理方案。</div>
+      </article>
+
+      <article class="guide-block" id="g10">
+        <h2>10. 均线怎么看压力</h2>
+        <p>均线在股价上方，可能成为压力。压力也常来自：上方均线、前期高点、平台上沿、套牢盘密集区、早盘高点、长期下降趋势线。</p>
+        <p><strong>强压力</strong>常见：多次上攻失败、上攻量能不足、靠近后冲高回落、与前高或长期均线重叠、板块开始分歧。</p>
+        <p>突破压力只是一半。真正重要的是：突破后能不能横住、回踩原压力会不会跌破、成交量是否健康、原压力能否变成新支撑。马上跌回去，很可能是假突破。</p>
+      </article>
+
+      <article class="guide-block" id="g11">
+        <h2>11. 均线粘合、收敛、变盘</h2>
+        <p><strong>均线粘合</strong>：多条均线逐渐靠近甚至纠缠，说明不同周期平均成本越来越接近。通常代表横盘很久、多空分歧暂时收敛、波动变小、快要选择方向。</p>
+        <p><strong>收敛</strong>像鱼嘴越来越窄：上方压力往下压，下方支撑往上抬。收敛后常常变盘，但方向可能向上也可能向下——不要默认上涨。</p>
+        <div class="split">
+          <div class="plain-block">
+            <h3>向上更有利</h3>
+            <ul>
+              <li>20 线开始向上</li>
+              <li>多次下探不破</li>
+              <li>突破时放量</li>
+              <li>120 分钟结构同步改善</li>
+              <li>板块有主线支持</li>
+            </ul>
+          </div>
+          <div class="plain-block">
+            <h3>向下更危险</h3>
+            <ul>
+              <li>5 线、20 线向下压</li>
+              <li>反弹多次不过 99 / 128</li>
+              <li>下方支撑放量跌破</li>
+              <li>跌破后回抽不过</li>
+              <li>板块和大盘都走弱</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+
+      <article class="guide-block" id="g12">
+        <h2>12. 第一次回踩重要均线</h2>
+        <p>强势上涨后第一次回踩重要均线，说明短线涨多了，但大结构未必坏。若回踩不破，资金容易继续做反弹。</p>
+        <p>重要不重要，要看过去价格是否尊重它。15 分钟可能看 MA99 / 128 / 225；120 分钟同理。</p>
+        <div class="split">
+          <div class="plain-block">
+            <h3>有效回踩</h3>
+            <ul>
+              <li>第一次碰到</li>
+              <li>缩量</li>
+              <li>没有大阴线砸穿</li>
+              <li>只是摸线或轻微刺破</li>
+              <li>很快拉回</li>
+              <li>5 分钟出现止跌或放量反弹</li>
+            </ul>
+          </div>
+          <div class="plain-block">
+            <h3>失败回踩</h3>
+            <ul>
+              <li>放量跌穿</li>
+              <li>跌穿后收不回</li>
+              <li>反弹不过原均线</li>
+              <li>下一根继续破低</li>
+              <li>板块同步走弱</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout">失败就要走，不能把「回踩买点」变成「越跌越补」。</div>
+      </article>
+
+      <article class="guide-block" id="g13">
+        <h2>13. 突破、确认、二次突破</h2>
+        <p>很多趋势不是一根大阳线直接完成，而是分层突破：突破第一道压力 → 附近横盘消化 → 回踩不破 → 再突破第二道压力 → 形成新上升结构。这个过程叫确认。</p>
+        <p>不要一突破就满仓，尤其缩量突破、板块不配合、大盘没量、套牢盘很重时。更稳的做法：突破时观察，回踩确认时介入，二次突破时再考虑加仓。</p>
+      </article>
+
+      <article class="guide-block" id="g14">
+        <h2>14. 多周期共振</h2>
+        <p>多周期共振，就是不同周期给出相似方向的信号。例如：日线修复 + 120 分钟突破长期压制 + 15 分钟回踩不破 + 5 分钟下跌缩量、反弹放量，买点质量通常更高。</p>
+        <p>反过来，日线仍在下跌、120 分钟还被压制、15 分钟只是短反弹、5 分钟突然拉升——这不是趋势买点，最多是短线博弈。</p>
+      </article>
+
+      <article class="guide-block" id="g15">
+        <h2>15. 均线与量价的关系</h2>
+        <p>均线告诉你位置，量价告诉你这个位置有没有资金态度。</p>
+        <div class="split">
+          <div class="plain-block">
+            <h3>回踩支撑</h3>
+            <p>更好：缩量回踩，到支撑附近不再放量下跌，反弹时开始放量。<br />更差：放量砸穿，反弹无量，跌破后继续创新低。</p>
+          </div>
+          <div class="plain-block">
+            <h3>突破压力</h3>
+            <p>更好：放量突破，突破后横盘不跌回，回踩缩量。<br />更差：缩量创新高，放量冲高回落，突破后马上跌回压力线下。</p>
+          </div>
+        </div>
+        <div class="callout">缩量创新高通常含金量不高。除非突发重大利好导致没人卖，否则买盘可能不够强，容易冲高回落。</div>
+      </article>
+
+      <article class="guide-block" id="g16">
+        <h2>16. 做 T 时怎么用均线</h2>
+        <p>做 T 的核心：在已有仓位基础上，围绕支撑和压力做差价。适合振幅够大、成交活跃、支撑压力清晰、股性熟悉、均线走势标准的票。每天振幅只有 1%–2%，很难覆盖手续费和滑点。</p>
+        <ol class="guide-steps">
+          <li>先有底仓</li>
+          <li>15 分钟图找压力位</li>
+          <li>靠近压力位卖一部分</li>
+          <li>回踩支撑位再接回来</li>
+          <li>如果跌破支撑，不急着接</li>
+        </ol>
+        <p>建仓期尽量少做 T，目标是拿到低成本筹码。适合做 T 的阶段通常是：已有底仓、进入震荡或拉升、支撑压力清晰、有足够波动空间。</p>
+      </article>
+
+      <article class="guide-block" id="g17">
+        <h2>17. 常见错误</h2>
+        <ul>
+          <li><strong>把 15 分钟 MA20 叫成 20 日线</strong>——它是最近 20 根 15 分钟 K 均价。</li>
+          <li><strong>只看一条均线</strong>——还要看多条均线位置、前高前低、成交量、板块、大盘。</li>
+          <li><strong>线太多</strong>——哪里都是支撑压力，最后无法执行。</li>
+          <li><strong>碰线就买</strong>——碰线只是提醒，不是买入指令。</li>
+          <li><strong>突破就无脑格局</strong>——突破后必须站稳，否则按假突破处理。</li>
+          <li><strong>用短周期否定长周期</strong>——5 分钟走坏不等于日线走坏，反之亦然。</li>
+        </ul>
+      </article>
+
+      <article class="guide-block" id="g18">
+        <h2>18. 一个完整例子：如何从均线得到交易计划</h2>
+        <p>假设：日线从底部反弹接近 MA225；120 分钟刚突破长期 MA99；15 分钟 MA99 与 MA128 很近；股价在 15 分钟 MA99 附近缩量回踩；5 分钟下跌缩量、反弹开始放量。</p>
+        <ul>
+          <li><strong>大背景</strong>：日线趋势修复，但上方 MA225 有长期压力</li>
+          <li><strong>趋势结构</strong>：120 分钟突破 MA99，结构改善</li>
+          <li><strong>买点</strong>：15 分钟回踩 MA99 / 128 附近，缩量，可小仓试错</li>
+          <li><strong>卖点</strong>：第一卖点看日线 MA225 或 15 分钟前高</li>
+          <li><strong>止损</strong>：15 分钟放量跌破 MA128 且收不回，逻辑失效</li>
+          <li><strong>仓位</strong>：先买 30%，突破站稳再加，不一次满仓</li>
+        </ul>
+        <div class="callout quote">这个计划不保证赚钱，但它是可复盘的：错了知道错在哪里，对了知道下次还能用什么条件。</div>
+      </article>
+
+      <article class="guide-block" id="g19">
+        <h2>19. 均线训练方法</h2>
+        <ol class="guide-steps">
+          <li><strong>第 1 阶段：只看不买</strong>——连续两周，每天找 3 只股票，记录日线趋势、120 结构、15 支撑压力、5 量价确认、最近回踩 / 突破是否有效。</li>
+          <li><strong>第 2 阶段：画支撑压力</strong>——每天在 15 分钟图标最近支撑、压力、最有效均线、失效点；第二天复盘市场是否认可。</li>
+          <li><strong>第 3 阶段：写交易计划</strong>——为什么买、在哪里买、在哪里卖、错了在哪里认错。写不出来就不要买。</li>
+          <li><strong>第 4 阶段：小仓验证</strong>——重点不是赚钱，而是验证支撑压力有效性、计划执行力、是否临盘乱改。</li>
+        </ol>
+      </article>
+
+      <article class="guide-block" id="g20">
+        <h2>20. 最后总结</h2>
+        <ul>
+          <li>均线参数表示「最近多少根 K 线的平均价格」。</li>
+          <li>参数不变，含义会随着 K 线周期变化。</li>
+          <li>日线看背景，120 分钟看结构，15 分钟看主要买卖点，5 分钟做精确确认。</li>
+          <li>均线要和量价、平台、前高前低、板块环境一起看。</li>
+          <li>支撑不是碰线就买，压力不是碰线就卖，都要看反应。</li>
+          <li>一套均线系统最重要的是一致性，不能每天换标准。</li>
+        </ul>
+        <div class="callout">
+          技术分析真正的价值，不是让你每次都猜对，而是让你每次下单都有理由、认错有位置、复盘有依据。
+          <br /><a class="btn btn-primary" href="./index.html#review" style="margin-top:1rem;">回到复盘台练习</a>
+        </div>
+      </article>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="brand-mark">MIRANDA</div>
+      <p>私人学习手记 · 均线与周期知识详解</p>
+      <p class="disclaimer">仅供 Miranda 个人学习参考，不构成任何投资建议。股市有风险，决策需谨慎。</p>
+    </div>
+  </footer>
+
+  <script>
+    (() => {
+      const nav = document.getElementById("siteNav");
+      window.addEventListener("scroll", () => {
+        nav.classList.toggle("is-scrolled", window.scrollY > 20);
+      });
+
+      const links = [...document.querySelectorAll(".guide-toc a")];
+      const blocks = links
+        .map((a) => document.querySelector(a.getAttribute("href")))
+        .filter(Boolean);
+
+      const io = new IntersectionObserver(
+        (entries) => {
+          const visible = entries
+            .filter((e) => e.isIntersecting)
+            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+          if (!visible) return;
+          links.forEach((a) => a.classList.toggle("is-active", a.getAttribute("href") === `#${visible.target.id}`));
+        },
+        { rootMargin: "-20% 0px -65% 0px", threshold: [0.1, 0.4, 0.7] }
+      );
+      blocks.forEach((el) => io.observe(el));
+    })();
+  </script>
+</body>
+</html>
