@@ -661,6 +661,14 @@ tr:last-child td {
   font-size: 0.9rem;
 }
 
+.playbook {
+  margin: 1rem 0 0.5rem;
+}
+
+.playbook .plain-block ul {
+  margin-top: 0.35rem;
+}
+
 .tool-row {
   display: flex;
   flex-wrap: wrap;
