@@ -626,45 +626,184 @@
       .sort((a, b) => b.score - a.score || (a.side === "buy" ? -1 : 1));
   }
 
-  function buildPlaybook(ctx, ranked) {
+  function getHoldStatus() {
+    const checked = document.querySelector('input[name="holdStatus"]:checked');
+    return checked ? checked.value : "flat";
+  }
+
+  function decideEntryGate(ctx, ranked) {
+    const buyBest = ranked.filter((t) => t.side === "buy").sort((a, b) => b.score - a.score)[0];
+    const sellBest = ranked.filter((t) => t.side === "sell").sort((a, b) => b.score - a.score)[0];
+    const reasons = [];
+
+    const hardNo =
+      (sellBest && sellBest.id === "sellB" && sellBest.score >= 60) ||
+      ctx.failedBreak ||
+      (ctx.arrangement === "偏空头" && (!buyBest || buyBest.score < 60)) ||
+      (ctx.hugeVolNoRise && sellBest && sellBest.score >= 50);
+
+    if (hardNo) {
+      if (ctx.failedBreak || (sellBest && sellBest.id === "sellB" && sellBest.score >= 60)) {
+        reasons.push("更像突破失败 / 假突破，不宜新开多仓。");
+      }
+      if (ctx.arrangement === "偏空头") reasons.push("均线结构偏空，先防守。");
+      if (ctx.hugeVolNoRise) reasons.push("出现巨量不涨，资金态度偏分歧。");
+      if (sellBest && sellBest.score >= 60) reasons.push(`卖点模板更匹配：${sellBest.title}（${sellBest.score}%）。`);
+      return {
+        verdict: "no",
+        title: "不建议买入",
+        summary: "当前更适合空手观望，或只处理已有持仓，不新增仓位。",
+        reasons,
+        buyBest,
+        sellBest,
+      };
+    }
+
+    const waitLike =
+      (ctx.underLongPressure && (!buyBest || buyBest.score < 80)) ||
+      (sellBest && sellBest.id === "sellA" && sellBest.score >= 60 && (!buyBest || buyBest.score < 80)) ||
+      (buyBest && buyBest.score < 60) ||
+      (buyBest && sellBest && sellBest.score >= buyBest.score);
+
+    if (waitLike) {
+      if (ctx.underLongPressure) reasons.push("靠近长期压力（如 MA225 / 前高一带），追高性价比低。");
+      if (sellBest && sellBest.score >= 60) reasons.push(`压力/卖点信号不弱：${sellBest.title}（${sellBest.score}%）。`);
+      if (!buyBest || buyBest.score < 60) reasons.push("买点模板匹配度不够，条件未齐。");
+      if (ctx.arrangement === "粘合 / 过渡") reasons.push("结构仍在过渡，方向未清前先等。");
+      return {
+        verdict: "wait",
+        title: "暂不建议买入",
+        summary: "可以盯着，但现在还不到动手位置；等回踩确认、收敛选向或突破站稳再说。",
+        reasons,
+        buyBest,
+        sellBest,
+      };
+    }
+
+    reasons.push(`买点更贴近：${buyBest.title}（${buyBest.score}%）。`);
+    if (buyBest.id === "buyA") reasons.push("强势回踩逻辑成立时，只适合分批低吸，不追高。");
+    if (buyBest.id === "buyB") reasons.push("收敛变盘区先小仓试错，不满仓赌方向。");
+    if (buyBest.id === "buyC") reasons.push("突破后回踩确认，比第一次冲动追突破更稳。");
+    if (ctx.tPoor) reasons.push("振幅偏小，即使试仓也要降低做 T 预期。");
+
+    return {
+      verdict: "yes",
+      title: buyBest.score >= 80 ? "可小仓试错" : "可分批关注",
+      summary: "技术条件相对更好，但仍要先过主营/主线人工闸门，再按仓位计划执行。",
+      reasons,
+      buyBest,
+      sellBest,
+    };
+  }
+
+  function buildHoldingAdvice(ctx, ranked, gate, holdStatus) {
+    const levels = nearestLevels(ctx);
+    const supportTxt = levels.support ? `${levels.support.name} ${pct(levels.support.v)}` : "下方关键支撑";
+    const pressureTxt = levels.pressure ? `${levels.pressure.name} ${pct(levels.pressure.v)}` : "上方关键压力";
+    const primary = ranked.find((t) => t.score >= 60) || ranked[0];
+    const items = [];
+
+    if (holdStatus === "flat") {
+      if (gate.verdict === "no") {
+        items.push("空仓：继续空手，不因为盘中拉升临时追进去。");
+        items.push(`观察位：回落到 ${supportTxt} 且缩量、能收回，再重新评估。`);
+        items.push(`若向上，也要等放量突破 ${pressureTxt} 并站稳，而不是半路接飞刀/追高。`);
+      } else if (gate.verdict === "wait") {
+        items.push("空仓：先写计划，不提前挂大单。");
+        items.push(`触发再看：缩量回踩 ${supportTxt}，或放量突破 ${pressureTxt} 后回踩不破。`);
+        items.push("在触发前，现金本身就是仓位。");
+      } else {
+        items.push(`空仓开仓：第一笔只做计划仓 30%–40%，参考 ${supportTxt}。`);
+        items.push("不要一次买满；第二笔留给下一支撑或突破确认。");
+        items.push("建仓期少做 T，避免把低成本筹码卖飞。");
+      }
+      return {
+        title: "持仓情况：空仓",
+        items,
+      };
+    }
+
+    // has position
+    if (gate.verdict === "no" || (primary && primary.side === "sell" && primary.score >= 60)) {
+      items.push(
+        holdStatus === "heavy"
+          ? "重仓：优先减负，先卖 1/3 到 1/2，把心态和风险降下来。"
+          : "轻仓：可先卖一部分锁定，或严格按压力位条件单处理。"
+      );
+      items.push(`压力区 ${pressureTxt}：量能不足就落袋，不幻想午后必拉。`);
+      items.push(`若放量跌破 ${supportTxt} 且收不回：短线仓先走，中线至少再减。`);
+      if (ctx.tFriendly && gate.verdict !== "no") {
+        items.push("若结构只是转弱未破位，可用剩余仓位高抛低吸做 T，但破位停止接回。");
+      } else {
+        items.push("当前更像防守阶段，减少无效做 T，先把风险降下来。");
+      }
+    } else if (gate.verdict === "wait") {
+      items.push("已有仓位：先不加仓，让利润/亏损都交给既定支撑压力管理。");
+      items.push(`靠近 ${pressureTxt}：可先做 T 卖出一部分；回踩 ${supportTxt} 不破再接。`);
+      items.push(holdStatus === "heavy" ? "重仓时更要主动降仓到舒服位置。" : "轻仓可继续观察，但别把轻仓做成重仓。");
+    } else {
+      const canGeJu =
+        primary.side === "buy" &&
+        (primary.id === "buyC" || (ctx.arrangement === "偏多头" && !ctx.underLongPressure)) &&
+        primary.score >= 60 &&
+        !ctx.failedBreak;
+
+      items.push(
+        holdStatus === "heavy"
+          ? "已有重仓：原则上不再大幅加仓，只做结构确认后的微调。"
+          : "已有轻仓：若回踩确认仍有效，可按计划小幅补到舒适仓位。"
+      );
+      items.push(
+        canGeJu
+          ? "结构偏格局：不必在第一个小压力全卖，可留底仓看二次上攻。"
+          : "结构更偏做 T / 波段：压力减、支撑接，不要无脑长拿。"
+      );
+      items.push(`认错位不变：放量跌破 ${supportTxt} 且收不回，就减仓或退出。`);
+    }
+
+    return {
+      title: holdStatus === "heavy" ? "持仓情况：已有重仓" : "持仓情况：已有轻仓",
+      items,
+    };
+  }
+
+  function buildPlaybook(ctx, ranked, holdStatus = "flat") {
+    const gate = decideEntryGate(ctx, ranked);
     const primary = ranked.find((t) => t.score >= 60) || ranked[0];
     const levels = nearestLevels(ctx);
     const supportTxt = levels.support ? `${levels.support.name} ${pct(levels.support.v)}` : "下方需人工标支撑";
     const pressureTxt = levels.pressure ? `${levels.pressure.name} ${pct(levels.pressure.v)}` : "上方需人工标压力";
+    const holding = buildHoldingAdvice(ctx, ranked, gate, holdStatus);
 
-    // 格局 vs 做T：120/日线结构改善且突破站稳偏格局；否则短线差价
     const canGeJu =
+      gate.verdict === "yes" &&
       primary.side === "buy" &&
       (primary.id === "buyC" || (ctx.arrangement === "偏多头" && !ctx.underLongPressure)) &&
       primary.score >= 60 &&
       !ctx.failedBreak &&
       !ctx.shrinkBreakout;
 
-    const preferT =
-      !canGeJu &&
-      (ctx.tFriendly || primary.id === "buyB" || primary.side === "sell" || ctx.underLongPressure || ctx.arrangement !== "偏多头");
-
-    let style = "观望 / 写计划";
-    if (primary.side === "sell" && primary.score >= 60) style = "减仓锁定 · 滚动观察";
-    else if (canGeJu) style = "中线观察仓 · 可格局一部分";
-    else if (preferT && ctx.tFriendly) style = "短线做 T / 波段差价";
-    else if (preferT && ctx.tPoor) style = "振幅偏小，谨慎做 T，偏计划仓";
-    else if (primary.side === "buy" && primary.score >= 60) style = "分批试错 · 先拿底仓";
+    let style = "观望 / 不新开仓";
+    if (gate.verdict === "no") style = "不建议买入 · 先处理风险";
+    else if (gate.verdict === "wait") style = "暂不买入 · 等待触发";
+    else if (canGeJu) style = "可小仓试错 · 部分可格局";
+    else if (ctx.tFriendly) style = "可小仓试错 · 偏做 T";
+    else style = "可分批关注 · 严格仓位";
 
     const buyPlan =
-      primary.side === "buy"
+      gate.verdict === "yes"
         ? [
             `第一笔：关键支撑附近试仓 30%–40%（参考 ${supportTxt}）。`,
             "第二笔：若回落下一支撑且大逻辑未破，再补 30%–40%；破位停止补仓。",
             "第三笔：仅在突破后横盘确认 / 二次放量突破时补剩余。",
             canGeJu
               ? "风格：突破确认后可保留部分仓位观察二次上攻，不要在第一个小压力全部卖飞。"
-              : "风格：更适合做 T 或波段差价，未确认 120/日线级结构前不要无脑格局。",
+              : "风格：更适合做 T 或波段差价，未确认大级别结构前不要无脑格局。",
           ]
         : [
-            "已有仓位：压力区先卖 1/3 或 1/2，降低心理噪音。",
-            "若回踩支撑不破，再考虑接回，形成滚动交易。",
-            "破位或假突破：短线仓先走，中线至少减仓，不提前幻想回补。",
+            "当前结论是不新开仓或暂不买入，仓位计划先写成「触发条件」，而不是立刻下单。",
+            `关注触发：缩量回踩 ${supportTxt}，或放量突破 ${pressureTxt} 后站稳。`,
+            "触发前保持现金，比提前上车更重要。",
           ];
 
     const sellPlan = [
@@ -693,6 +832,8 @@
     ];
 
     return {
+      gate,
+      holding,
       primary,
       style,
       supportTxt,
@@ -703,11 +844,13 @@
       invalidation,
       manualGate,
       arrangement: ctx.arrangement,
+      holdStatus,
     };
   }
 
   function renderPlaybookHtml(playbook) {
     const list = (items) => items.map((x) => `<li>${x}</li>`).join("");
+    const showBuyPlan = playbook.gate.verdict === "yes";
     return `
       <div class="playbook">
         <div class="metric-grid">
@@ -718,7 +861,7 @@
         </div>
         <div class="split" style="margin-top:1rem;">
           <div class="plain-block">
-            <h3>仓位计划</h3>
+            <h3>${showBuyPlan ? "若决定试仓" : "等待触发后再谈买"}</h3>
             <ul>${list(playbook.buyPlan)}</ul>
           </div>
           <div class="plain-block">
@@ -738,11 +881,13 @@
     `;
   }
 
-  function renderReviewResult(info, quote, ranked, ctx) {
-    const playbook = buildPlaybook(ctx, ranked);
-    const primary = playbook.primary;
+  function renderReviewResult(info, quote, ranked, ctx, holdStatus = "flat") {
+    const playbook = buildPlaybook(ctx, ranked, holdStatus);
+    const gate = playbook.gate;
     const cls = quote.change >= 0 ? "price-up" : "price-down";
     const sign = quote.change >= 0 ? "+" : "";
+    const reasonHtml = gate.reasons.map((r) => `<li>${r}</li>`).join("");
+    const holdingHtml = playbook.holding.items.map((r) => `<li>${r}</li>`).join("");
 
     const cards = ranked
       .map((t) => {
@@ -756,7 +901,7 @@
               <div class="match-score">匹配 ${t.score}%（${t.hit}/${t.checks.length}）</div>
             </header>
             <ul>${checks}</ul>
-            <div class="action-box"><strong>操作建议：</strong>${t.action}</div>
+            <div class="action-box"><strong>模板动作：</strong>${t.action}</div>
           </article>
         `;
       })
@@ -772,15 +917,22 @@
           </div>
         </div>
       </div>
-      <div class="advice-banner" data-side="${primary.side}">
-        <div class="eyebrow">${primary.side === "buy" ? "Buy Advice" : "Sell Advice"} · 综合模板 + 仓位框架</div>
-        <h3>${primary.title}</h3>
-        <p>${primary.action}</p>
-        <p>匹配度 ${primary.score}%。建议风格：${playbook.style}。请先过人工闸门，再执行分批计划。</p>
+
+      <div class="verdict-banner" data-verdict="${gate.verdict}">
+        <div class="eyebrow">第一步 · 买入结论</div>
+        <h3>${gate.title}</h3>
+        <p>${gate.summary}</p>
+        <ul class="verdict-reasons">${reasonHtml}</ul>
       </div>
+
+      <div class="position-panel">
+        <h3>第二步 · ${playbook.holding.title}</h3>
+        <ul>${holdingHtml}</ul>
+      </div>
+
       ${renderPlaybookHtml(playbook)}
       <div class="match-list">${cards}</div>
-      <p style="font-size:0.82rem;color:var(--muted);">建议引擎综合均线结构、量价、支撑压力与仓位纪律生成，仅供 Miranda 个人学习，不构成投资建议。</p>
+      <p style="font-size:0.82rem;color:var(--muted);">流程：先判断买不买 → 再按持仓处理 → 最后才看模板细节。仅供 Miranda 个人学习，不构成投资建议。</p>
     `;
   }
 
@@ -823,8 +975,9 @@
       const m15 = await fetchMinuteCloses(info.symbol, 15, 250);
       const ctx = buildContext(quote, klines, m15);
       const ranked = matchTemplates(ctx);
+      const holdStatus = getHoldStatus();
       result.hidden = false;
-      result.innerHTML = renderReviewResult(info, { ...quote, name: quote.name }, ranked, ctx);
+      result.innerHTML = renderReviewResult(info, { ...quote, name: quote.name }, ranked, ctx, holdStatus);
       highlightTemplateCards(ranked);
       // sync into technical lab for convenience
       document.getElementById("stockInput").value = code;

@@ -669,6 +669,112 @@ tr:last-child td {
   margin-top: 0.35rem;
 }
 
+.hold-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.9rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.hold-label {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hold-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.hold-option input {
+  accent-color: var(--teal-deep);
+}
+
+.verdict-banner {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1.05rem 1.15rem;
+  margin: 1rem 0;
+  border: 1px solid var(--line);
+}
+
+.verdict-banner[data-verdict="no"] {
+  background: rgba(194, 59, 42, 0.08);
+  border-color: rgba(194, 59, 42, 0.28);
+}
+
+.verdict-banner[data-verdict="wait"] {
+  background: rgba(201, 149, 42, 0.1);
+  border-color: rgba(201, 149, 42, 0.35);
+}
+
+.verdict-banner[data-verdict="yes"] {
+  background: rgba(15, 122, 100, 0.08);
+  border-color: rgba(15, 122, 100, 0.28);
+}
+
+.verdict-banner .eyebrow {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.verdict-banner h3 {
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+}
+
+.verdict-banner p {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.verdict-reasons {
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.verdict-reasons li + li {
+  margin-top: 0.22rem;
+}
+
+.position-panel {
+  margin: 1rem 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.position-panel h3 {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  margin-bottom: 0.45rem;
+}
+
+.position-panel ul {
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.position-panel li + li {
+  margin-top: 0.28rem;
+}
+
 .tool-row {
   display: flex;
   flex-wrap: wrap;
