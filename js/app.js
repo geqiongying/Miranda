@@ -117,8 +117,9 @@
     if (/^(002|003)\d{3}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "股票", name: code };
     if (/^(300|301)\d{3}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "股票", name: code };
     if (/^[48]\d{5}$/.test(code)) return { secid: "0." + code, symbol: "bj" + code, type: "股票", name: code };
-    if (/^(159|16|15)\d{4}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "ETF", name: code };
-    if (/^51\d{4}$/.test(code)) return { secid: "1." + code, symbol: "sh" + code, type: "ETF", name: code };
+    // ETF: 15xxxx / 16xxxx / 18xxxx (SZ), 51xxxx / 56xxxx / 58xxxx (SH)
+    if (/^(15|16|18)\d{4}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "ETF", name: code };
+    if (/^(51|56|58)\d{4}$/.test(code)) return { secid: "1." + code, symbol: "sh" + code, type: "ETF", name: code };
     return null;
   }
 
