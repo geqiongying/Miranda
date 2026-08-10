@@ -775,6 +775,62 @@ tr:last-child td {
   margin-top: 0.28rem;
 }
 
+.price-targets {
+  margin: 1rem 0 1.2rem;
+}
+
+.price-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.price-card {
+  border: 1px solid var(--line);
+  background: var(--white);
+  padding: 0.95rem 1rem;
+}
+
+.price-card span {
+  display: block;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.price-card strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.2;
+  margin-bottom: 0.45rem;
+}
+
+.price-card p {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.price-card[data-kind="buy"] strong {
+  color: var(--teal-deep);
+}
+
+.price-card[data-kind="sell"] strong {
+  color: var(--rise);
+}
+
+.price-card[data-kind="stop"] strong {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 760px) {
+  .price-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .tool-row {
   display: flex;
   flex-wrap: wrap;

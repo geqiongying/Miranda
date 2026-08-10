@@ -502,7 +502,124 @@
     return {
       support: supports[0] || null,
       pressure: pressures[0] || null,
+      supports,
+      pressures,
     };
+  }
+
+  function roundPrice(v) {
+    if (v == null || Number.isNaN(v)) return null;
+    if (v >= 100) return Math.round(v * 100) / 100;
+    if (v >= 10) return Math.round(v * 100) / 100;
+    return Math.round(v * 1000) / 1000;
+  }
+
+  function buildPriceTargets(ctx, gate, ranked) {
+    const levels = nearestLevels(ctx);
+    const primary = ranked.find((t) => t.score >= 60) || ranked[0];
+    const price = ctx.price;
+    const ma = ctx.ma;
+
+    // Prefer structural buy anchors by template type.
+    let buyAnchor = levels.support;
+    if (primary?.id === "buyA") {
+      const pull = [ma.ma99, ma.ma128, ma.ma225]
+        .filter((v) => v != null)
+        .map((v) => ({ name: "回踩均线", v }))
+        .sort((a, b) => Math.abs(a.v - price) - Math.abs(b.v - price))[0];
+      if (pull) buyAnchor = { name: pull.name, v: pull.v };
+    } else if (primary?.id === "buyC" && ctx.prev10High) {
+      buyAnchor = { name: "突破回踩确认", v: ctx.prev10High };
+    } else if (primary?.id === "buyB" && levels.support) {
+      buyAnchor = levels.support;
+    }
+
+    let sellAnchor = levels.pressure;
+    if (ctx.underLongPressure && ma.ma225 != null) {
+      sellAnchor = { name: "MA225 长期压力", v: ma.ma225 };
+    } else if (levels.pressure) {
+      sellAnchor = levels.pressure;
+    } else if (ctx.prev20High) {
+      sellAnchor = { name: "前高/平台", v: ctx.prev20High };
+    }
+
+    const buyCore = buyAnchor?.v ?? price * 0.99;
+    const sellCore = sellAnchor?.v ?? price * 1.02;
+    // Keep a practical band around the anchor.
+    const buyLow = roundPrice(Math.min(buyCore, price) * 0.995);
+    const buyHigh = roundPrice(Math.min(Math.max(buyCore, buyCore * 1.005), price * 1.002));
+    const sellLow = roundPrice(Math.max(sellCore * 0.995, price * 1.005));
+    const sellHigh = roundPrice(sellCore * 1.008);
+    const stop = roundPrice((buyAnchor?.v ?? price) * 0.985);
+
+    const buyNow = gate.verdict === "yes";
+    const buyLabel = buyNow ? "建议买入价" : "观察买入价";
+    const sellLabel = "建议卖出价";
+
+    let buyNote = buyAnchor
+      ? `参考 ${buyAnchor.name} ${pct(buyAnchor.v)} 附近挂单/回踩确认。`
+      : "下方支撑不清，价格仅作粗略参考。";
+    let sellNote = sellAnchor
+      ? `参考 ${sellAnchor.name} ${pct(sellAnchor.v)} 附近减仓或做 T。`
+      : "上方压力不清，价格仅作粗略参考。";
+
+    if (!buyNow) {
+      buyNote = `当前不建议追价；等到 ${pct(buyLow)}–${pct(buyHigh)} 一带缩量回踩/确认再评估。`;
+    }
+    if (sellCore <= price * 1.003) {
+      sellNote = `已靠近压力区，可按现价上方 ${pct(sellLow)}–${pct(sellHigh)} 分批减。`;
+    }
+
+    // If buy band is inverted/weird, fall back.
+    const buyText =
+      buyLow != null && buyHigh != null
+        ? buyLow === buyHigh
+          ? pct(buyLow)
+          : `${pct(buyLow)} – ${pct(buyHigh)}`
+        : "--";
+    const sellText =
+      sellLow != null && sellHigh != null
+        ? sellLow === sellHigh
+          ? pct(sellLow)
+          : `${pct(sellLow)} – ${pct(sellHigh)}`
+        : "--";
+
+    return {
+      buyLabel,
+      sellLabel,
+      buyText,
+      sellText,
+      buyNote,
+      sellNote,
+      stopText: stop != null ? pct(stop) : "--",
+      stopNote: `放量跌破 ${stop != null ? pct(stop) : "支撑"} 且收不回，当笔逻辑失效。`,
+      buyNow,
+    };
+  }
+
+  function renderPriceTargetsHtml(targets) {
+    return `
+      <div class="price-targets">
+        <div class="section-label" style="margin-bottom:0.55rem;">价格建议</div>
+        <div class="price-grid">
+          <div class="price-card" data-kind="buy">
+            <span>${targets.buyLabel}</span>
+            <strong>${targets.buyText}</strong>
+            <p>${targets.buyNote}</p>
+          </div>
+          <div class="price-card" data-kind="sell">
+            <span>${targets.sellLabel}</span>
+            <strong>${targets.sellText}</strong>
+            <p>${targets.sellNote}</p>
+          </div>
+          <div class="price-card" data-kind="stop">
+            <span>止损参考价</span>
+            <strong>${targets.stopText}</strong>
+            <p>${targets.stopNote}</p>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   function matchTemplates(ctx) {
@@ -884,6 +1001,7 @@
   function renderReviewResult(info, quote, ranked, ctx, holdStatus = "flat") {
     const playbook = buildPlaybook(ctx, ranked, holdStatus);
     const gate = playbook.gate;
+    const targets = buildPriceTargets(ctx, gate, ranked);
     const cls = quote.change >= 0 ? "price-up" : "price-down";
     const sign = quote.change >= 0 ? "+" : "";
     const reasonHtml = gate.reasons.map((r) => `<li>${r}</li>`).join("");
@@ -930,9 +1048,11 @@
         <ul>${holdingHtml}</ul>
       </div>
 
+      ${renderPriceTargetsHtml(targets)}
+
       ${renderPlaybookHtml(playbook)}
       <div class="match-list">${cards}</div>
-      <p style="font-size:0.82rem;color:var(--muted);">流程：先判断买不买 → 再按持仓处理 → 最后才看模板细节。仅供 Miranda 个人学习，不构成投资建议。</p>
+      <p style="font-size:0.82rem;color:var(--muted);">流程：先判断买不买 → 再按持仓处理 → 给出买卖价格带 → 最后看模板细节。价格为技术位参考，不构成投资建议。</p>
     `;
   }
 
