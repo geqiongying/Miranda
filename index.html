@@ -313,15 +313,16 @@
             <label class="hold-option"><input type="radio" name="holdStatus" value="heavy" /> 已有重仓</label>
           </div>
           <div class="tool-row">
-            <input id="reviewInput" type="text" placeholder="测试股票代码，如 600519 / 300750 / 688981" autocomplete="off" />
+            <input id="reviewInput" type="text" placeholder="测试代码，如 600126 / 600584 / 510300" autocomplete="off" />
             <button class="btn btn-primary" id="reviewBtn" type="button">开始复盘</button>
           </div>
           <div class="tool-hints">
             <span>快速测试：</span>
-            <button type="button" data-review="600519">600519 茅台</button>
-            <button type="button" data-review="300750">300750 宁德</button>
-            <button type="button" data-review="688981">688981 中芯</button>
-            <button type="button" data-review="002475">002475 立讯</button>
+            <button type="button" data-review="600126">600126 杭钢</button>
+            <button type="button" data-review="600584">600584 长电</button>
+            <button type="button" data-review="600962">600962 国投中鲁</button>
+            <button type="button" data-review="510300">510300 沪深300ETF</button>
+            <button type="button" data-review="159948">159948 创业板ETF</button>
           </div>
           <div class="status-box" id="reviewLoading" hidden>正在对照复盘模板...</div>
           <div class="error-box" id="reviewError" hidden></div>
@@ -432,16 +433,16 @@
 
         <div class="tool-panel">
           <div class="tool-row">
-            <input id="stockInput" type="text" placeholder="例如 600519、399006、BK0477" autocomplete="off" />
+            <input id="stockInput" type="text" placeholder="例如 600126、600584、510300" autocomplete="off" />
             <button class="btn btn-primary" id="analyzeBtn" type="button">深度分析</button>
           </div>
           <div class="tool-hints">
             <span>示例：</span>
-            <button type="button" data-fill="600519">600519 茅台</button>
-            <button type="button" data-fill="300750">300750 宁德</button>
-            <button type="button" data-fill="399006">399006 创业板</button>
-            <button type="button" data-fill="000001">000001 上证</button>
-            <button type="button" data-fill="BK0477">BK0477 半导体</button>
+            <button type="button" data-fill="600126">600126 杭钢</button>
+            <button type="button" data-fill="600584">600584 长电</button>
+            <button type="button" data-fill="600962">600962 国投中鲁</button>
+            <button type="button" data-fill="510300">510300 沪深300ETF</button>
+            <button type="button" data-fill="159948">159948 创业板ETF</button>
           </div>
           <div class="status-box" id="loadingStatus" hidden>正在获取数据...</div>
           <div class="error-box" id="errorMsg" hidden></div>
