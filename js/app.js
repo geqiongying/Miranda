@@ -1065,6 +1065,71 @@
     });
   }
 
+  const REVIEW_HISTORY_KEY = "miranda_review_history_v1";
+  const REVIEW_HISTORY_LIMIT = 12;
+
+  function loadReviewHistory() {
+    try {
+      const raw = localStorage.getItem(REVIEW_HISTORY_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveReviewHistory(list) {
+    try {
+      localStorage.setItem(REVIEW_HISTORY_KEY, JSON.stringify(list.slice(0, REVIEW_HISTORY_LIMIT)));
+    } catch (_) {
+      // ignore quota / private mode failures
+    }
+  }
+
+  function pushReviewHistory(entry) {
+    const code = String(entry.code || "").trim().toUpperCase();
+    if (!code) return;
+    const name = entry.name || code;
+    const next = [
+      { code, name, at: Date.now() },
+      ...loadReviewHistory().filter((item) => String(item.code).toUpperCase() !== code),
+    ];
+    saveReviewHistory(next);
+    renderReviewHistory();
+  }
+
+  function clearReviewHistory() {
+    saveReviewHistory([]);
+    renderReviewHistory();
+  }
+
+  function renderReviewHistory() {
+    const row = document.getElementById("reviewHistoryRow");
+    const listEl = document.getElementById("reviewHistoryList");
+    if (!row || !listEl) return;
+    const list = loadReviewHistory();
+    if (!list.length) {
+      row.hidden = true;
+      listEl.innerHTML = "";
+      return;
+    }
+    row.hidden = false;
+    listEl.innerHTML = list
+      .map(
+        (item) =>
+          `<button type="button" class="history-chip" data-history-code="${item.code}">${item.code}${
+            item.name && item.name !== item.code ? ` ${item.name}` : ""
+          }</button>`
+      )
+      .join("");
+    listEl.querySelectorAll("[data-history-code]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.getElementById("reviewInput").value = btn.dataset.historyCode;
+        runReview();
+      });
+    });
+  }
+
   async function runReview() {
     const input = document.getElementById("reviewInput");
     const result = document.getElementById("reviewResult");
@@ -1100,6 +1165,7 @@
       result.hidden = false;
       result.innerHTML = renderReviewResult(info, { ...quote, name: quote.name }, ranked, ctx, holdStatus);
       highlightTemplateCards(ranked);
+      pushReviewHistory({ code: info.name || code, name: quote.name || info.name || code });
       // sync into technical lab for convenience
       document.getElementById("stockInput").value = code;
     } catch (e) {
@@ -1120,6 +1186,9 @@
       runReview();
     });
   });
+  const historyClearBtn = document.getElementById("reviewHistoryClear");
+  if (historyClearBtn) historyClearBtn.addEventListener("click", clearReviewHistory);
+  renderReviewHistory();
 
   // ---------- Index chart ----------
   function showIdxLoading(msg) {

@@ -775,6 +775,65 @@ tr:last-child td {
   margin-top: 0.28rem;
 }
 
+.history-row {
+  margin: 0.35rem 0 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--line);
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.history-head span {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.history-clear {
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.history-clear:hover {
+  color: var(--rise);
+}
+
+.history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.history-chip {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-soft);
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  cursor: pointer;
+  font-size: 0.86rem;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.history-chip:hover {
+  border-color: var(--teal);
+  color: var(--teal-deep);
+  background: rgba(15, 122, 100, 0.08);
+}
+
 .price-targets {
   margin: 1rem 0 1.2rem;
 }
