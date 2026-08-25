@@ -39,13 +39,15 @@
 
   const chips = document.querySelectorAll(".code-chip");
   const explain = document.getElementById("codeExplain");
-  chips.forEach((chip) => {
-    chip.addEventListener("click", () => {
-      chips.forEach((c) => c.classList.remove("is-active"));
-      chip.classList.add("is-active");
-      explain.textContent = CODE_MAP[chip.dataset.code] || "";
+  if (chips.length && explain) {
+    chips.forEach((chip) => {
+      chip.addEventListener("click", () => {
+        chips.forEach((c) => c.classList.remove("is-active"));
+        chip.classList.add("is-active");
+        explain.textContent = CODE_MAP[chip.dataset.code] || "";
+      });
     });
-  });
+  }
 
   // ---------- Network / market data ----------
   function fetchJsonp(url, timeoutMs = 12000) {
@@ -312,16 +314,20 @@
     }
   }
 
-  document.getElementById("analyzeBtn").addEventListener("click", analyzeStock);
-  document.getElementById("stockInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") analyzeStock();
-  });
-  document.querySelectorAll(".tool-hints [data-fill]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.getElementById("stockInput").value = btn.dataset.fill;
-      analyzeStock();
+  const analyzeBtn = document.getElementById("analyzeBtn");
+  const stockInputEl = document.getElementById("stockInput");
+  if (analyzeBtn && stockInputEl) {
+    analyzeBtn.addEventListener("click", analyzeStock);
+    stockInputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") analyzeStock();
     });
-  });
+    document.querySelectorAll(".tool-hints [data-fill]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        stockInputEl.value = btn.dataset.fill;
+        analyzeStock();
+      });
+    });
+  }
 
   // ---------- Review engine (knowledge embedded, not displayed as docs) ----------
   // Internal playbook reference (Yange framework): style -> pool -> structure ->
@@ -1061,7 +1067,8 @@
     const hotId = (ranked.find((t) => t.score >= 60) || ranked[0] || {}).id;
     document.querySelectorAll(".template-card").forEach((card, idx) => {
       const map = ["buyA", "buyB", "buyC", "sellA", "sellB"];
-      card.classList.toggle("is-hot", map[idx] === hotId);
+      const id = card.dataset.id || map[idx];
+      card.classList.toggle("is-hot", id === hotId);
     });
   }
 
@@ -1130,59 +1137,105 @@
     });
   }
 
-  async function runReview() {
+  function extractAskCode(raw) {
+    const text = String(raw || "").trim().toUpperCase();
+    const m = text.match(/\b((?:SH|SZ|BJ)?\d{6}|BK\d{3,5})\b/);
+    return m ? m[1].replace(/^(SH|SZ|BJ)/, "") : text;
+  }
+
+  function appendCoachBubble(role, html) {
+    const box = document.getElementById("coachMessages");
+    if (!box) return;
+    const el = document.createElement("div");
+    el.className = `coach-bubble ${role}`;
+    el.innerHTML = html;
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function runReview(opts = {}) {
     const input = document.getElementById("reviewInput");
     const result = document.getElementById("reviewResult");
     const loading = document.getElementById("reviewLoading");
     const error = document.getElementById("reviewError");
+    if (!input || !result || !loading || !error) return;
 
     result.hidden = true;
     error.hidden = true;
-    const code = input.value.trim();
-    if (!code) {
+    const raw = (opts.preset || input.value).trim();
+    if (!raw) {
       error.hidden = false;
-      error.textContent = "请输入测试股票代码";
+      error.textContent = "请输入股票代码，或问「代码 + 适不适合买/卖」";
       return;
     }
 
+    const code = extractAskCode(raw);
     const info = getSecId(code);
     if (!info || !info.symbol) {
       error.hidden = false;
-      error.textContent = "请输入可复盘的股票 / 指数代码（板块代码暂不支持完整复盘）。";
+      error.textContent = "请输入可复盘的股票 / 指数 / ETF 代码。";
+      appendCoachBubble("bot", "没识别到有效代码。试试六位代码，例如 <code>600584</code>。");
       return;
     }
 
+    if (!opts.silentUser) {
+      appendCoachBubble("user", raw.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c])));
+    }
+
     loading.hidden = false;
-    loading.textContent = "拉取行情并对照模板...";
+    loading.textContent = "拉取行情并对照买卖规则...";
     try {
       const quote = await fetchQuote(info);
-      loading.textContent = "计算均线与量能...";
+      loading.textContent = "计算均线、量能与模板匹配...";
       const klines = await fetchDayKlines(info.symbol);
       const m15 = await fetchMinuteCloses(info.symbol, 15, 250);
       const ctx = buildContext(quote, klines, m15);
       const ranked = matchTemplates(ctx);
       const holdStatus = getHoldStatus();
+      const playbook = buildPlaybook(ctx, ranked, holdStatus);
+      const gate = playbook.gate;
       result.hidden = false;
       result.innerHTML = renderReviewResult(info, { ...quote, name: quote.name }, ranked, ctx, holdStatus);
       highlightTemplateCards(ranked);
       pushReviewHistory({ code: info.name || code, name: quote.name || info.name || code });
-      // sync into technical lab for convenience
-      document.getElementById("stockInput").value = code;
+
+      const buyBest = gate.buyBest;
+      const sellBest = gate.sellBest;
+      const fit = buyBest ? `${buyBest.title} ${buyBest.score}%` : "买点未成型";
+      const sellFit = sellBest ? `${sellBest.title} ${sellBest.score}%` : "卖点未成型";
+      appendCoachBubble(
+        "bot",
+        `<strong>${quote.name}（${info.name || code}）· ${gate.title}</strong><br/>${gate.summary}<br/>买点契合：${fit}<br/>卖点契合：${sellFit}<br/><span style="color:var(--muted)">下方有完整持仓建议与价格带。契合度不是胜率。</span>`
+      );
+      input.value = "";
     } catch (e) {
       error.hidden = false;
-      error.textContent = e.message || "复盘失败";
+      error.textContent = e.message || "问答失败";
+      appendCoachBubble("bot", `这次没跑通：${e.message || "请稍后再试"}`);
     } finally {
       loading.hidden = true;
     }
   }
 
-  document.getElementById("reviewBtn").addEventListener("click", runReview);
-  document.getElementById("reviewInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") runReview();
-  });
+  const coachForm = document.getElementById("coachForm");
+  if (coachForm) {
+    coachForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      runReview();
+    });
+  } else {
+    const reviewBtn = document.getElementById("reviewBtn");
+    if (reviewBtn) reviewBtn.addEventListener("click", () => runReview());
+    const reviewInput = document.getElementById("reviewInput");
+    if (reviewInput) {
+      reviewInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") runReview();
+      });
+    }
+  }
   document.querySelectorAll("[data-review]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      document.getElementById("reviewInput").value = btn.dataset.review;
+      document.getElementById("reviewInput").value = `${btn.dataset.review} 现在适合买入或卖出吗？`;
       runReview();
     });
   });
@@ -1190,221 +1243,173 @@
   if (historyClearBtn) historyClearBtn.addEventListener("click", clearReviewHistory);
   renderReviewHistory();
 
-  // ---------- Index chart ----------
-  function showIdxLoading(msg) {
-    const el = document.getElementById("idxLoading");
-    el.hidden = false;
-    el.textContent = msg;
-    document.getElementById("idxError").hidden = true;
+  // ---------- Rules-based observation picks ----------
+  const COACH_UNIVERSE = [
+    { code: "300308", tip: "主线风向 · CPO" },
+    { code: "688981", tip: "主线风向 · 半导体" },
+    { code: "600584", tip: "先进封装 / 关注池" },
+    { code: "688361", tip: "设备检测 / 关注池" },
+    { code: "688521", tip: "芯片 IP / 关注池" },
+    { code: "603186", tip: "材料主题 / 关注池" },
+    { code: "300285", tip: "材料 / 关注池" },
+    { code: "600176", tip: "玻纤龙头 / 关注池" },
+    { code: "600962", tip: "持仓风险观察" },
+    { code: "600126", tip: "短线观察" },
+    { code: "000905", tip: "港口卫星" },
+    { code: "601212", tip: "有色卫星" },
+    { code: "510300", tip: "宽基底仓对照" },
+    { code: "159948", tip: "成长β对照" },
+    { code: "300750", tip: "新能源样本" },
+    { code: "600519", tip: "权重样本" },
+  ];
+
+  async function scoreOnePick(item) {
+    const info = getSecId(item.code);
+    if (!info || !info.symbol) throw new Error("代码无效");
+    const quote = await fetchQuote(info);
+    const klines = await fetchDayKlines(info.symbol);
+    const m15 = await fetchMinuteCloses(info.symbol, 15, 180);
+    const ctx = buildContext(quote, klines, m15);
+    const ranked = matchTemplates(ctx);
+    const gate = decideEntryGate(ctx, ranked);
+    const buyBest = gate.buyBest;
+    const sellBest = gate.sellBest;
+    const fitScore =
+      gate.verdict === "yes"
+        ? buyBest?.score || 0
+        : gate.verdict === "wait"
+          ? Math.max(35, Math.min(59, buyBest?.score || 40))
+          : Math.min(34, sellBest?.score || 20);
+    return {
+      code: item.code,
+      tip: item.tip,
+      name: quote.name,
+      price: quote.price,
+      changePct: quote.changePct,
+      verdict: gate.verdict,
+      title: gate.title,
+      summary: gate.summary,
+      fitScore,
+      buyLabel: buyBest ? `${buyBest.title} ${buyBest.score}%` : "买点弱",
+      sellLabel: sellBest ? `${sellBest.title} ${sellBest.score}%` : "卖点弱",
+      arrangement: ctx.arrangement,
+    };
   }
 
-  function hideIdxLoading() {
-    document.getElementById("idxLoading").hidden = true;
+  function verdictRank(v) {
+    if (v === "yes") return 0;
+    if (v === "wait") return 1;
+    return 2;
   }
 
-  function showIdxError(msg) {
-    const el = document.getElementById("idxError");
-    el.hidden = false;
-    el.textContent = msg;
-    document.getElementById("idxMAValues").hidden = true;
-    document.getElementById("idxPositionAlert").style.display = "none";
-    hideIdxLoading();
-  }
+  function renderPicksBoard(rows) {
+    const board = document.getElementById("picksBoard");
+    if (!board) return;
+    const sorted = [...rows].sort(
+      (a, b) => verdictRank(a.verdict) - verdictRank(b.verdict) || b.fitScore - a.fitScore
+    );
+    const watch = sorted.filter((r) => r.verdict === "yes" || r.verdict === "wait");
+    const avoid = sorted.filter((r) => r.verdict === "no");
 
-  async function fetchIdxData(code) {
-    const cfg = IDX_CONFIG[code];
-    showIdxLoading(`获取 ${cfg.name} 行情...`);
-    try {
-      const quote = await fetchQuote({ secid: cfg.secid, name: cfg.name });
-      showIdxLoading(`获取 ${cfg.name} K 线...`);
-      const klines = await fetchDayKlines(cfg.symbol);
-      const closes = klines.map((k) => k.close);
-      const ma99 = calcMA(closes, 99);
-      const ma128 = calcMA(closes, 128);
-      const ma225 = calcMA(closes, 225);
-      const data = {
-        name: cfg.name,
-        price: quote.price,
-        changeAmt: quote.change,
-        changePct: quote.changePct,
-        klines,
-        ma99,
-        ma128,
-        ma225,
-        lastMA99: ma99[ma99.length - 1],
-        lastMA128: ma128[ma128.length - 1],
-        lastMA225: ma225[ma225.length - 1],
-      };
-      idxDataCache[code] = data;
-      hideIdxLoading();
-      renderIdxChart(data);
-    } catch (e) {
-      showIdxError(`${cfg.name} 获取失败：${e.message}`);
-    }
-  }
+    const card = (r) => `
+      <button type="button" class="pick-card" data-verdict="${r.verdict}" data-pick-code="${r.code}">
+        <div class="pick-top">
+          <strong>${r.name}</strong>
+          <span>${r.code}</span>
+        </div>
+        <div class="pick-price ${r.changePct >= 0 ? "up" : "down"}">
+          ${r.price.toFixed(2)}
+          <em>${r.changePct >= 0 ? "+" : ""}${r.changePct.toFixed(2)}%</em>
+        </div>
+        <div class="pick-verdict">${r.title}</div>
+        <div class="pick-fit">规则契合 ${r.fitScore}%</div>
+        <p>${r.tip} · ${r.arrangement}</p>
+        <p class="pick-templates">${r.buyLabel} · ${r.sellLabel}</p>
+      </button>
+    `;
 
-  function renderIdxChart(data) {
-    const canvas = document.getElementById("idxChartCanvas");
-    const ctx = canvas.getContext("2d");
-    const W = 900;
-    const H = 480;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    canvas.style.width = "100%";
-    canvas.style.height = "auto";
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    const { klines, ma99, ma128, ma225, price, name, changeAmt, changePct } = data;
-    const displayCount = Math.min(90, klines.length);
-    const sliced = klines.slice(-displayCount);
-    const ma99s = ma99.slice(-displayCount);
-    const ma128s = ma128.slice(-displayCount);
-    const ma225s = ma225.slice(-displayCount);
-
-    let minP = Infinity;
-    let maxP = -Infinity;
-    sliced.forEach((k) => {
-      maxP = Math.max(maxP, k.high);
-      minP = Math.min(minP, k.low);
-    });
-    [ma99s, ma128s, ma225s].forEach((arr) => {
-      arr.forEach((v) => {
-        if (v != null) {
-          maxP = Math.max(maxP, v);
-          minP = Math.min(minP, v);
-        }
+    board.hidden = false;
+    board.innerHTML = `
+      <div class="picks-group">
+        <h3>优先观察（更接近可买 / 可盯）</h3>
+        <div class="picks-grid">${watch.length ? watch.map(card).join("") : "<p class='empty-picks'>当前池子里没有过闸门的标的，现金也是仓位。</p>"}</div>
+      </div>
+      <div class="picks-group">
+        <h3>回避或只处理持仓</h3>
+        <div class="picks-grid">${avoid.length ? avoid.map(card).join("") : "<p class='empty-picks'>暂无硬回避项。</p>"}</div>
+      </div>
+      <p class="picks-footnote">列表按「规则契合」排序，不是胜率排行。点卡片会送进下方问答窗细问。</p>
+    `;
+    board.querySelectorAll("[data-pick-code]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const code = btn.dataset.pickCode;
+        document.getElementById("reviewInput").value = `${code} 现在适合买入或卖出吗？`;
+        document.getElementById("ask")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        runReview();
       });
     });
-
-    const padding = { top: 40, right: 70, bottom: 40, left: 55 };
-    const chartW = W - padding.left - padding.right;
-    const chartH = H - padding.top - padding.bottom;
-    const pad = (maxP - minP) * 0.06;
-    const yMin = minP - pad;
-    const yMax = maxP + pad;
-    const yRange = yMax - yMin || 1;
-    const gap = chartW / displayCount;
-    const candleW = Math.max(2, gap * 0.68);
-    const yPos = (p) => padding.top + chartH - ((p - yMin) / yRange) * chartH;
-
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = "#f7faf8";
-    ctx.fillRect(0, 0, W, H);
-
-    ctx.strokeStyle = "rgba(13,31,26,0.08)";
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 5; i++) {
-      const y = padding.top + (chartH / 5) * i;
-      ctx.beginPath();
-      ctx.moveTo(padding.left, y);
-      ctx.lineTo(W - padding.right, y);
-      ctx.stroke();
-      ctx.fillStyle = "#5a6e66";
-      ctx.font = '11px "Noto Sans SC", sans-serif';
-      ctx.textAlign = "right";
-      ctx.fillText((yMax - (i / 5) * yRange).toFixed(1), padding.left - 8, y + 4);
-    }
-
-    function drawMA(values, color) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      let started = false;
-      for (let i = 0; i < displayCount; i++) {
-        const v = values[i];
-        if (v == null) {
-          started = false;
-          continue;
-        }
-        const x = padding.left + (i + 0.5) * gap;
-        const y = yPos(v);
-        if (!started) {
-          ctx.moveTo(x, y);
-          started = true;
-        } else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-
-    drawMA(ma99s, "#0f7a64");
-    drawMA(ma128s, "#c9952a");
-    drawMA(ma225s, "#c23b2a");
-
-    for (let i = 0; i < displayCount; i++) {
-      const k = sliced[i];
-      const x = padding.left + (i + 0.5) * gap;
-      const up = k.close >= k.open;
-      ctx.strokeStyle = up ? "#c23b2a" : "#1f7a4d";
-      ctx.fillStyle = ctx.strokeStyle;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x, yPos(k.high));
-      ctx.lineTo(x, yPos(k.low));
-      ctx.stroke();
-      const top = yPos(Math.max(k.open, k.close));
-      const bottom = yPos(Math.min(k.open, k.close));
-      ctx.fillRect(x - candleW / 2, top, candleW, Math.max(1, bottom - top));
-    }
-
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = "#0f7a64";
-    ctx.beginPath();
-    ctx.moveTo(padding.left, yPos(price));
-    ctx.lineTo(W - padding.right, yPos(price));
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.fillStyle = "#0d1f1a";
-    ctx.font = 'bold 14px "Noto Serif SC", serif';
-    ctx.textAlign = "left";
-    ctx.fillText(name, padding.left, 22);
-    ctx.fillStyle = changeAmt >= 0 ? "#c23b2a" : "#1f7a4d";
-    ctx.font = '13px "Noto Sans SC", sans-serif';
-    const changeStr =
-      changeAmt >= 0
-        ? `+${changeAmt.toFixed(2)} (+${changePct.toFixed(2)}%)`
-        : `${changeAmt.toFixed(2)} (${changePct.toFixed(2)}%)`;
-    ctx.fillText(`现价 ${price.toFixed(2)}  ${changeStr}`, padding.left + 90, 22);
-
-    document.getElementById("idxNameDisplay").textContent = data.name;
-    const priceEl = document.getElementById("idxPriceDisplay");
-    priceEl.textContent = price.toFixed(2);
-    priceEl.className = changeAmt >= 0 ? "price-up" : "price-down";
-    document.getElementById("idxMA99Display").textContent = data.lastMA99?.toFixed(2) ?? "N/A";
-    document.getElementById("idxMA128Display").textContent = data.lastMA128?.toFixed(2) ?? "N/A";
-    document.getElementById("idxMA225Display").textContent = data.lastMA225?.toFixed(2) ?? "N/A";
-    document.getElementById("idxMAValues").hidden = false;
-
-    const alert = document.getElementById("idxPositionAlert");
-    let msg = "指数处于均线之间，震荡观察，等待方向选择。";
-    if (data.lastMA225 && price <= data.lastMA225 * 1.02) {
-      msg = "接近 / 触及 MA225 结构底线区域，防守与决战并重，先看是否破位。";
-    } else if (data.lastMA128 && price <= data.lastMA128 * 1.03) {
-      msg = "位于 MA128 变盘点附近，重点观察量能是否配合。";
-    } else if (data.lastMA99 && price <= data.lastMA99 * 1.03) {
-      msg = "位于 MA99 中期分界附近，多空拉锯，不宜追涨杀跌。";
-    } else if (data.lastMA99 && price > data.lastMA99) {
-      msg = "运行于 MA99 上方，中期偏强，关注能否站稳。";
-    }
-    alert.style.display = "block";
-    alert.textContent = msg;
   }
 
-  document.querySelectorAll("#idxTabs [data-idx]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      currentIdx = btn.dataset.idx;
-      document.querySelectorAll("#idxTabs [data-idx]").forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      if (idxDataCache[currentIdx]) renderIdxChart(idxDataCache[currentIdx]);
-      else fetchIdxData(currentIdx);
+  async function runPicksScan() {
+    const loading = document.getElementById("picksLoading");
+    const error = document.getElementById("picksError");
+    const meta = document.getElementById("picksMeta");
+    const board = document.getElementById("picksBoard");
+    if (!loading || !error || !board) return;
+
+    error.hidden = true;
+    loading.hidden = false;
+    board.hidden = true;
+    const rows = [];
+    let done = 0;
+    for (const item of COACH_UNIVERSE) {
+      loading.textContent = `正在扫描 ${item.code}（${++done}/${COACH_UNIVERSE.length}）...`;
+      try {
+        rows.push(await scoreOnePick(item));
+      } catch (e) {
+        rows.push({
+          code: item.code,
+          tip: item.tip,
+          name: item.code,
+          price: 0,
+          changePct: 0,
+          verdict: "no",
+          title: "数据不足",
+          summary: e.message || "跳过",
+          fitScore: 0,
+          buyLabel: "--",
+          sellLabel: "--",
+          arrangement: "数据不足",
+        });
+      }
+    }
+    loading.hidden = true;
+    renderPicksBoard(rows.filter((r) => r.fitScore > 0 || r.price > 0));
+    const yesN = rows.filter((r) => r.verdict === "yes").length;
+    const waitN = rows.filter((r) => r.verdict === "wait").length;
+    if (meta) meta.textContent = `已扫描 ${rows.length} 只 · 可关注 ${yesN} · 等待 ${waitN} · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+  }
+
+  const picksBtn = document.getElementById("picksBtn");
+  if (picksBtn) picksBtn.addEventListener("click", runPicksScan);
+
+  // Index chart only if legacy lab exists
+  const refreshIdx = document.getElementById("refreshIdx");
+  if (refreshIdx && document.getElementById("idxChartCanvas")) {
+    document.querySelectorAll("#idxTabs [data-idx]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        currentIdx = btn.dataset.idx;
+        document.querySelectorAll("#idxTabs [data-idx]").forEach((b) => b.classList.remove("is-active"));
+        btn.classList.add("is-active");
+        if (idxDataCache[currentIdx]) renderIdxChart(idxDataCache[currentIdx]);
+        else fetchIdxData(currentIdx);
+      });
     });
-  });
-
-  document.getElementById("refreshIdx").addEventListener("click", () => {
-    delete idxDataCache[currentIdx];
-    fetchIdxData(currentIdx);
-  });
-
-  setTimeout(() => fetchIdxData("000001"), 400);
+    refreshIdx.addEventListener("click", () => {
+      delete idxDataCache[currentIdx];
+      fetchIdxData(currentIdx);
+    });
+    setTimeout(() => fetchIdxData("000001"), 400);
+  }
 })();
+
