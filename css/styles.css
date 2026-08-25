@@ -1418,3 +1418,19 @@ tr:last-child td {
     max-height: 240px;
   }
 }
+
+.video-board {
+  margin-top: 0.5rem;
+}
+
+.rule-ol {
+  margin: 0.6rem 0 0.8rem 1.1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.muted-note {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}

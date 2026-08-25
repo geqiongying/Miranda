@@ -483,6 +483,50 @@
       failedBreak: quote.high >= prev10High * 0.998 && quote.price < prev10High * 0.995,
       tFriendly: avgAmp5 >= 0.03 || dayAmp >= 0.035,
       tPoor: avgAmp5 > 0 && avgAmp5 < 0.02,
+      // --- 作手老严录像 · 量能篇（Release Videos-Laoyao）---
+      ...(() => {
+        const prev5VolMax = Math.max(...vols.slice(-6, -1).filter((v) => v > 0), 0);
+        const look60 = vols.slice(-61, -1);
+        const peakVol60 = Math.max(...look60.filter((v) => v > 0), 0);
+        const peakVolIdxRel = look60.lastIndexOf(peakVol60);
+        const doubleOverPrev5 = prev5VolMax > 0 && volLast >= prev5VolMax * 2;
+        const tripleVol = volAvg10 > 0 && volLast >= volAvg10 * 2.8;
+        const last3 = klines.slice(-3);
+        const threeUp =
+          last3.length === 3 && last3.every((k, i) => i === 0 || k.close >= last3[i - 1].close);
+        const threeUpGain =
+          threeUp && last3[0].open > 0 ? (last3[2].close - last3[0].open) / last3[0].open : 0;
+        const threeUp10 = threeUp && threeUpGain >= 0.1;
+        // max-volume bar in last 12 sessions (exclude today optionally use including today)
+        const win = klines.slice(-12);
+        let maxVolBar = win[0];
+        win.forEach((k) => {
+          if ((k.volume || 0) >= (maxVolBar.volume || 0)) maxVolBar = k;
+        });
+        const maxVolBodyLow = Math.min(maxVolBar.open, maxVolBar.close);
+        const maxVolBodyMid = (maxVolBar.open + maxVolBar.close) / 2;
+        const nearCostLow = near(quote.price, maxVolBodyLow, 0.02) || near(quote.low, maxVolBodyLow, 0.02);
+        const nearCostHalf = near(quote.price, maxVolBodyMid, 0.02) || near(quote.low, maxVolBodyMid, 0.02);
+        const shrinkHalfVsMax =
+          (maxVolBar.volume || 0) > 0 && volLast > 0 && volLast <= maxVolBar.volume * 0.55;
+        const entityNewHigh = quote.price >= Math.max(...closes.slice(-6, -1)) * 0.998;
+        const volExceedsPriorPeak = peakVol60 > 0 && volLast >= peakVol60 * 0.98;
+        const stagnantHuge = volLast >= volAvg10 * 1.6 && Math.abs(quote.changePct) <= 0.6;
+        return {
+          doubleOverPrev5,
+          tripleVol,
+          threeUp10,
+          maxVolBodyLow,
+          maxVolBodyMid,
+          nearCostLow,
+          nearCostHalf,
+          shrinkHalfVsMax,
+          entityNewHigh,
+          volExceedsPriorPeak,
+          stagnantHuge,
+          volLaunchOk: doubleOverPrev5 || threeUp10 || tripleVol,
+        };
+      })(),
     };
   }
 
@@ -739,6 +783,34 @@
           { ok: ctx.failedBreak && quote.changePct <= 0.2, text: "反弹尚未重新站上" },
         ],
       },
+      {
+        id: "buyVol",
+        side: "buy",
+        title: "买点 V · 录像量能回踩",
+        action: "对应「通用大周期分时」：启动后找最大量阳线成本区，实体新高且缩到约一半时，回踩成本下沿/半位再试；破位或放量滞涨先走。",
+        checks: [
+          { ok: ctx.volLaunchOk, text: "三连阳约10% / 倍量过前五 / 近端3倍量之一成立" },
+          { ok: ctx.entityNewHigh || structureOk, text: "实体创新高或结构未明显破坏" },
+          { ok: ctx.shrinkHalfVsMax || shrinkVol, text: "相对最大量缩至约一半（卖压释放）" },
+          { ok: ctx.nearCostLow || ctx.nearCostHalf || ctx.touchedMaToday, text: "回踩最大量成本区或关键支撑" },
+          { ok: !ctx.stagnantHuge && !ctx.hugeVolNoRise, text: "未见放量滞涨破坏逻辑" },
+        ],
+      },
+      {
+        id: "sellVol",
+        side: "sell",
+        title: "卖点 V · 放量滞涨/破位",
+        action: "录像强调：放量不涨先离场；破掉最大量成本底或放量阴破高，短线逻辑失效。",
+        checks: [
+          { ok: ctx.stagnantHuge || ctx.hugeVolNoRise, text: "放量滞涨 / 巨量不涨" },
+          { ok: ctx.fadeFromHigh || quote.changePct <= 0, text: "冲高回落或当日偏弱" },
+          {
+            ok: (ctx.maxVolBodyLow != null && price < ctx.maxVolBodyLow * 0.995) || ctx.failedBreak,
+            text: "跌破最大量成本底或突破失败",
+          },
+          { ok: ctx.expandVol || ctx.tripleVol, text: "量能仍活跃，不是无声阴跌" },
+        ],
+      },
     ];
 
     return templates
@@ -762,16 +834,18 @@
 
     const hardNo =
       (sellBest && sellBest.id === "sellB" && sellBest.score >= 60) ||
+      (sellBest && sellBest.id === "sellVol" && sellBest.score >= 75) ||
       ctx.failedBreak ||
       (ctx.arrangement === "偏空头" && (!buyBest || buyBest.score < 60)) ||
-      (ctx.hugeVolNoRise && sellBest && sellBest.score >= 50);
+      (ctx.hugeVolNoRise && sellBest && sellBest.score >= 50) ||
+      (ctx.stagnantHuge && (!buyBest || buyBest.score < 80));
 
     if (hardNo) {
       if (ctx.failedBreak || (sellBest && sellBest.id === "sellB" && sellBest.score >= 60)) {
         reasons.push("更像突破失败 / 假突破，不宜新开多仓。");
       }
       if (ctx.arrangement === "偏空头") reasons.push("均线结构偏空，先防守。");
-      if (ctx.hugeVolNoRise) reasons.push("出现巨量不涨，资金态度偏分歧。");
+      if (ctx.hugeVolNoRise || ctx.stagnantHuge) reasons.push("放量滞涨/巨量不涨（录像卖点 V），先处理风险。");
       if (sellBest && sellBest.score >= 60) reasons.push(`卖点模板更匹配：${sellBest.title}（${sellBest.score}%）。`);
       return {
         verdict: "no",
@@ -808,6 +882,7 @@
     if (buyBest.id === "buyA") reasons.push("强势回踩逻辑成立时，只适合分批低吸，不追高。");
     if (buyBest.id === "buyB") reasons.push("收敛变盘区先小仓试错，不满仓赌方向。");
     if (buyBest.id === "buyC") reasons.push("突破后回踩确认，比第一次冲动追突破更稳。");
+    if (buyBest.id === "buyVol") reasons.push("量能回踩（录像）：成本区+缩半确认，仍只小仓试错。");
     if (ctx.tPoor) reasons.push("振幅偏小，即使试仓也要降低做 T 预期。");
 
     return {
@@ -1066,7 +1141,7 @@
   function highlightTemplateCards(ranked) {
     const hotId = (ranked.find((t) => t.score >= 60) || ranked[0] || {}).id;
     document.querySelectorAll(".template-card").forEach((card, idx) => {
-      const map = ["buyA", "buyB", "buyC", "sellA", "sellB"];
+      const map = ["buyA", "buyB", "buyC", "sellA", "sellB", "buyVol", "sellVol"];
       const id = card.dataset.id || map[idx];
       card.classList.toggle("is-hot", id === hotId);
     });

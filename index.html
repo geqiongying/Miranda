@@ -141,32 +141,26 @@
       <div class="wrap">
         <div class="section-label">03 / Rules</div>
         <h2>当前使用的教学规则</h2>
-        <p class="section-lead">引擎按这些模板打分。视频上传到仓库后，会把录像里的细节继续写进规则权重。</p>
+        <p class="section-lead">均线模板 + 已精读的录像量能篇（Release <code>Videos-Laoyao</code>）。其余视频继续上传后会再加深。</p>
 
-        <div class="split">
+        <div class="plain-block video-board">
+          <h3>录像精读 · 通用大周期分时</h3>
+          <ol class="rule-ol">
+            <li>三连阳累计约 10%，或倍量过前五 —— 确认启动</li>
+            <li>找到放量最大阳线 —— 锚定成本区</li>
+            <li>实体创新高 + 缩量约一半 —— 回踩成本下沿/半位再启动</li>
+            <li>破位 / 放量阴破高 / 放量滞涨 —— 失效或先走</li>
+          </ol>
+          <p class="muted-note">另含：3倍量试盘/建仓、分歧转一致、超跌超量后禁止直接抄大阴、须等反包；N 型必须看低位放量是否盖过左侧套牢量。老师说的「10%→90%」是强调「图形+量能位置」，不是网站胜率承诺。</p>
+        </div>
+
+        <div class="split" style="margin-top:1.5rem;">
           <div class="plain-block">
             <h3>买入闸门</h3>
             <ul>
-              <li>假突破 / 偏空结构 / 巨量滞涨 → 不建议买</li>
+              <li>假突破 / 偏空结构 / 放量滞涨 → 不建议买</li>
               <li>贴着长期压力、卖点更强、买点未齐 → 暂不买</li>
-              <li>买点 A/B/C 匹配充分 → 可小仓试错或分批关注</li>
-            </ul>
-          </div>
-          <div class="plain-block">
-            <h3>三种买点</h3>
-            <ul>
-              <li>A 强势回踩：缩量回踩 99/128/225，止损清楚</li>
-              <li>B 收敛变盘：均线粘合、波动收窄，小仓试错</li>
-              <li>C 突破回踩：突破后回踩确认，不追第一次冲动</li>
-            </ul>
-          </div>
-        </div>
-        <div class="split" style="margin-top:1.5rem;">
-          <div class="plain-block">
-            <h3>两种卖点</h3>
-            <ul>
-              <li>A 压力位减仓：靠近前高/均线压力，量能不足先减</li>
-              <li>B 突破失败：放量不过又跌回，短线先走</li>
+              <li>买点 A/B/C/V 匹配充分 → 可小仓试错或分批关注</li>
             </ul>
           </div>
           <div class="plain-block">
@@ -195,6 +189,11 @@
             <h3>突破回踩确认</h3>
             <p>突破后不急追；等回踩原压力不破再介入。</p>
           </article>
+          <article class="template-card" data-side="buy" data-id="buyVol">
+            <div class="template-tag">买点 V</div>
+            <h3>录像量能回踩</h3>
+            <p>启动后锚定最大量成本区；实体新高且缩半，回踩成本区再试。</p>
+          </article>
           <article class="template-card" data-side="sell" data-id="sellA">
             <div class="template-tag">卖点 A</div>
             <h3>压力位减仓</h3>
@@ -205,11 +204,17 @@
             <h3>突破失败</h3>
             <p>放量突破又跌回：短线仓先走，站稳前不幻想。</p>
           </article>
+          <article class="template-card" data-side="sell" data-id="sellVol">
+            <div class="template-tag">卖点 V</div>
+            <h3>放量滞涨/破位</h3>
+            <p>放量不涨先离场；跌破最大量成本底则当笔逻辑失效。</p>
+          </article>
         </div>
 
         <p class="section-lead" style="margin-top:1.5rem;">
-          更完整的均线与周期说明见 <a href="./guide.html" style="color:var(--teal-deep);text-decoration:underline;">知识详解</a>。
-          视频请放到仓库 <code>videos/</code> 或 Release 后告诉我，以便加深规则。
+          精读笔记：<a href="./notes/laoyan-volume-rules.md" style="color:var(--teal-deep);text-decoration:underline;">notes/laoyan-volume-rules.md</a>
+          · 均线详解见 <a href="./guide.html" style="color:var(--teal-deep);text-decoration:underline;">知识详解</a>。
+          其余视频请继续挂到 Release。
         </p>
       </div>
     </section>
