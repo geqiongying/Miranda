@@ -529,6 +529,19 @@
         const entityNewHigh = quote.price >= Math.max(...closes.slice(-6, -1)) * 0.998;
         const volExceedsPriorPeak = peakVol60 > 0 && volLast >= peakVol60 * 0.98;
         const stagnantHuge = volLast >= volAvg10 * 1.6 && Math.abs(quote.changePct) <= 0.6;
+        // 启动发生在近端（今日或昨日），洗盘则是今日相对最大量收缩
+        const launchRecent =
+          doubleOverPrev5 ||
+          tripleVol ||
+          (vols[last - 1] > 0 && prev5VolMax > 0 && vols[last - 1] >= prev5VolMax * 2) ||
+          (volAvg10 > 0 && vols[last - 1] >= volAvg10 * 2.8);
+        const washToday = shrinkHalfVsMax || quarterVsMax || (volAvg10 > 0 && volLast < volAvg10 * 0.85);
+        // 强控盘近似：近几日上涨但量不夸张，今日缩量回踩
+        const quietRise =
+          closes[last] >= closes[Math.max(0, last - 5)] &&
+          volAvg10 > 0 &&
+          avg(vols.slice(-6)) <= volAvg10 * 1.15;
+        const ctrlPullback = quietRise && washToday && (near(quote.low, ma20[last], 0.025) || nearCostHalf || nearCostLow);
         return {
           doubleOverPrev5,
           tripleVol,
@@ -548,6 +561,12 @@
           stackVol,
           quarterVsMax,
           reclaimCost,
+          launchRecent,
+          washToday,
+          quietRise,
+          ctrlPullback,
+          heldAboveDivLow:
+            maxVolBodyLow != null ? quote.low >= maxVolBodyLow * 0.985 : false,
         };
       })(),
     };
@@ -809,26 +828,39 @@
       {
         id: "buyVol",
         side: "buy",
-        title: "买点 V · 录像量能回踩",
-        action: "对应「通用大周期分时 / 爆量大阳」：启动后锚定最大量成本区；缩半或地量后再回踩/站回成本区试错。破位或放量滞涨先走。",
+        title: "买点 V · 爆量后缩量回踩",
+        action: "剧本：近端先有倍量/3倍量（或堆量）分歧，再缩半或地量洗盘，回踩/站回最大量成本区才试。弱建要等缩半后的放量突破，不把「结构还行」当成买点。短洗不可击穿分歧低点。",
         checks: [
-          { ok: ctx.volLaunchOk || ctx.stackVol || ctx.volExceedsPriorPeak, text: "三连阳约10% / 倍量过前五 / 堆量或底部超量之一" },
-          { ok: ctx.entityNewHigh || ctx.reclaimCost || structureOk, text: "实体新高、反包成本区或结构未坏" },
-          { ok: ctx.shrinkHalfVsMax || ctx.quarterVsMax || shrinkVol, text: "缩半洗盘或约1/4地量（卖压释放）" },
-          { ok: ctx.nearCostLow || ctx.nearCostHalf || ctx.nearMa20 || ctx.longLowerShadow || ctx.needle2x, text: "回踩成本/MA20，或金针/长下影测试" },
-          { ok: !ctx.stagnantHuge && !ctx.hugeVolNoRise, text: "未见放量滞涨破坏逻辑" },
+          { ok: ctx.launchRecent || ctx.stackVol || ctx.volExceedsPriorPeak, text: "近端已出现启动量（倍量/3倍/堆量/底部超量）" },
+          { ok: ctx.washToday, text: "今日处于缩半或地量洗盘阶段（与启动不同日态）" },
+          { ok: ctx.nearCostLow || ctx.nearCostHalf || ctx.reclaimCost, text: "价格回到最大量成本下沿/半位，或反包站回" },
+          { ok: ctx.heldAboveDivLow || ctx.reclaimCost || ctx.entityNewHigh, text: "未有效击穿分歧成本低点，或已反包/实体新高" },
+          { ok: !ctx.stagnantHuge && !ctx.hugeVolNoRise, text: "未见放量滞涨" },
+        ],
+      },
+      {
+        id: "buyCtrl",
+        side: "buy",
+        title: "买点 Ctl · 强控盘缩量回踩",
+        action: "剧本：资金强势特征——拉升中量并不大、实体新高后缩量回踩。与爆量换手套路分开，不要用天量标准硬套。",
+        checks: [
+          { ok: ctx.quietRise || (ctx.entityNewHigh && !ctx.tripleVol), text: "近端抬升且量能不夸张（拉升中量偏小）" },
+          { ok: ctx.entityNewHigh || structureOk, text: "实体新高或结构仍偏多" },
+          { ok: ctx.washToday || shrinkVol, text: "缩量回踩进行中" },
+          { ok: ctx.ctrlPullback || ctx.nearMa20 || ctx.touchedMaToday, text: "回踩均线/成本附近" },
+          { ok: !ctx.stagnantHuge && !ctx.failedBreak && !ctx.hugeVolNoRise, text: "无滞涨、无假突破" },
         ],
       },
       {
         id: "buyCons",
         side: "buy",
         title: "买点 H · 横盘起爆观察",
-        action: "前有放量连阳，横盘不深调且涨放回调缩；贴近 MA20 出现长下影测试时加入观察，确认后再小仓，不追深调破位票。",
+        action: "前有放量连阳，横盘不深调；更理想是区间内涨放回调缩。贴近 MA20 出现长下影/金针测试时观察，确认后再小仓。",
         checks: [
-          { ok: ctx.volLaunchOk || ctx.stackVol || ctx.expandVol, text: "前段有放量/堆量进场痕迹" },
+          { ok: ctx.launchRecent || ctx.stackVol || ctx.expandVol, text: "前段有放量/堆量进场痕迹" },
           { ok: ctx.recentRangePct <= 0.12 || ctx.arrangement !== "偏空头", text: "近期波动收敛、非单边深跌" },
           { ok: ctx.nearMa20, text: "价格靠近 MA20 洗盘结束带" },
-          { ok: ctx.longLowerShadow || ctx.needle2x || (ctx.shrinkVol && ctx.touchedMaToday), text: "长下影/金针测试或缩量回踩均线" },
+          { ok: ctx.longLowerShadow || ctx.needle2x || (ctx.washToday && ctx.touchedMaToday), text: "长下影/金针测试或缩量回踩均线" },
           { ok: !ctx.failedBreak && !ctx.stagnantHuge, text: "未见假突破或放量滞涨" },
         ],
       },
@@ -918,9 +950,11 @@
     if (buyBest.id === "buyA") reasons.push("强势回踩逻辑成立时，只适合分批低吸，不追高。");
     if (buyBest.id === "buyB") reasons.push("收敛变盘区先小仓试错，不满仓赌方向。");
     if (buyBest.id === "buyC") reasons.push("突破后回踩确认，比第一次冲动追突破更稳。");
-    if (buyBest.id === "buyVol") reasons.push("量能回踩（录像）：成本区+缩半/地量确认，仍只小仓试错。");
+    if (buyBest.id === "buyVol") reasons.push("爆量后缩量回踩：先确认启动与洗盘分阶段，弱建还要等放量突破。");
+    if (buyBest.id === "buyCtrl") reasons.push("强控盘剧本：看重拉升量小+缩量回踩，不要用天量标准去套。");
     if (buyBest.id === "buyCons") reasons.push("横盘起爆观察：MA20 测试成立时再动手，不追已经飞起来的票。");
     if (ctx.tPoor) reasons.push("振幅偏小，即使试仓也要降低做 T 预期。");
+    reasons.push("分时右空/同区双板等细节仍需人工核对（见笔记审计）。");
 
     return {
       verdict: "yes",
@@ -1178,7 +1212,7 @@
   function highlightTemplateCards(ranked) {
     const hotId = (ranked.find((t) => t.score >= 60) || ranked[0] || {}).id;
     document.querySelectorAll(".template-card").forEach((card, idx) => {
-      const map = ["buyA", "buyB", "buyC", "buyVol", "buyCons", "sellA", "sellB", "sellVol"];
+      const map = ["buyA", "buyB", "buyC", "buyVol", "buyCtrl", "buyCons", "sellA", "sellB", "sellVol"];
       const id = card.dataset.id || map[idx];
       card.classList.toggle("is-hot", id === hotId);
     });
