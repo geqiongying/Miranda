@@ -53,7 +53,7 @@
   }
 
   // ---------- Network / market data ----------
-  function fetchJsonp(url, timeoutMs = 12000) {
+  function fetchJsonp(url, timeoutMs = 12000, cbParam = "cb") {
     return new Promise((resolve, reject) => {
       const cbName = `__miranda_cb_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
       const script = document.createElement("script");
@@ -79,15 +79,40 @@
       };
 
       const joiner = url.includes("?") ? "&" : "?";
-      script.src = `${url}${joiner}cb=${cbName}`;
+      script.src = `${url}${joiner}${cbParam}=${cbName}`;
       document.head.appendChild(script);
     });
   }
 
-  async function fetchCorsJson(url) {
-    const resp = await fetch(url, { mode: "cors", credentials: "omit" });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    return resp.json();
+  async function fetchCorsJson(url, timeoutMs = 12000) {
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+    try {
+      const resp = await fetch(url, {
+        mode: "cors",
+        credentials: "omit",
+        signal: ctrl?.signal,
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      return await resp.json();
+    } catch (e) {
+      const msg = e?.message || String(e);
+      if (/abort/i.test(msg)) throw new Error("行情请求超时");
+      if (/load failed|failed to fetch|networkerror|network error/i.test(msg)) {
+        throw new Error("Load failed");
+      }
+      throw e;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  function friendlyNetError(e) {
+    const msg = e?.message || String(e);
+    if (/load failed|failed to fetch|networkerror|network error|行情接口加载失败|行情请求超时/i.test(msg)) {
+      return "行情接口暂时拉不到（常见于手机 Safari / 网络拦截），已可自动换源重试；请再点一次提问。";
+    }
+    return msg;
   }
 
   function calcMA(data, period) {
@@ -133,22 +158,21 @@
     const quoteData = await fetchJsonp(url);
     if (!quoteData.data) throw new Error("未找到该代码数据，请检查是否输入正确");
     const q = quoteData.data;
+    const price = Number(q.f43) / 100;
+    const preClose = Number(q.f60) / 100;
     return {
       name: q.f58 || info.name,
-      price: q.f43 / 100,
-      high: q.f44 / 100,
-      low: q.f45 / 100,
-      open: q.f46 / 100,
-      preClose: q.f60 / 100,
-      change: q.f169 / 100,
-      changePct: q.f170 / 100,
+      price: Number.isFinite(price) ? price : 0,
+      high: Number(q.f44) / 100 || 0,
+      low: Number(q.f45) / 100 || 0,
+      open: Number(q.f46) / 100 || 0,
+      preClose: Number.isFinite(preClose) ? preClose : 0,
+      change: Number(q.f169) / 100 || 0,
+      changePct: Number(q.f170) / 100 || 0,
     };
   }
 
-  async function fetchDayKlines(symbol) {
-    if (!symbol) throw new Error("该代码暂不支持 K 线拉取（如部分板块）");
-    const url = `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${symbol},day,,,260,qfq`;
-    const data = await fetchCorsJson(url);
+  function mapTencentDayRows(symbol, data) {
     const node = data?.data?.[symbol];
     const rows = node?.qfqday || node?.day;
     if (!rows || !rows.length) throw new Error("未能获取 K 线数据");
@@ -162,20 +186,162 @@
     }));
   }
 
-  async function fetchMinuteCloses(symbol, minutes = 15, count = 250) {
-    if (!symbol) return null;
-    // Tencent minute endpoint variants differ by market; degrade quietly if unavailable.
-    const url = `https://web.ifzq.gtimg.cn/appstock/app/kline/mkline?param=${symbol},m${minutes},,${count}`;
-    try {
-      const data = await fetchCorsJson(url);
-      const node = data?.data?.[symbol];
-      const key = `m${minutes}`;
-      const rows = node?.[key];
-      if (!rows || !rows.length) return null;
-      return rows.map((r) => parseFloat(r[2]));
-    } catch (_) {
-      return null;
+  async function fetchDayKlinesTencent(symbol, baseUrl) {
+    const url = `${baseUrl}?param=${symbol},day,,,260,qfq`;
+    const data = await fetchCorsJson(url);
+    return mapTencentDayRows(symbol, data);
+  }
+
+  async function fetchDayKlinesEastmoney(secid) {
+    const url =
+      "https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=" +
+      encodeURIComponent(secid) +
+      "&ut=fa5fd1943c7b386f172d6893dbfba10b&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&end=20500101&lmt=260";
+    const data = await fetchJsonp(url, 18000);
+    const rows = data?.data?.klines;
+    if (!Array.isArray(rows) || !rows.length) throw new Error("东财 K 线为空");
+    return rows.map((line) => {
+      const p = String(line).split(",");
+      return {
+        date: p[0],
+        open: parseFloat(p[1]),
+        close: parseFloat(p[2]),
+        high: parseFloat(p[3]),
+        low: parseFloat(p[4]),
+        volume: parseFloat(p[5] || 0),
+      };
+    });
+  }
+
+  async function fetchDayKlinesSohu(code) {
+    const end = new Date();
+    const start = new Date(end.getTime() - 420 * 86400000);
+    const fmt = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}${m}${day}`;
+    };
+    const url =
+      "https://q.stock.sohu.com/hisHq?code=cn_" +
+      encodeURIComponent(code) +
+      "&start=" +
+      fmt(start) +
+      "&end=" +
+      fmt(end) +
+      "&stat=1&order=A&period=d&rt=jsonp";
+    const data = await fetchJsonp(url, 18000, "callback");
+    const block = Array.isArray(data) ? data[0] : null;
+    const rows = block?.hq;
+    if (!Array.isArray(rows) || !rows.length) throw new Error("搜狐 K 线为空");
+    return rows.map((r) => ({
+      date: r[0],
+      open: parseFloat(r[1]),
+      close: parseFloat(r[2]),
+      low: parseFloat(r[5]),
+      high: parseFloat(r[6]),
+      volume: parseFloat(r[7] || 0),
+    }));
+  }
+
+  async function fetchDayKlines(symbol, secid) {
+    if (!symbol && !secid) throw new Error("该代码暂不支持 K 线拉取（如部分板块）");
+    const code = String(symbol || "").replace(/^(sh|sz|bj)/i, "") || String(secid || "").split(".").pop();
+    const attempts = [];
+    if (symbol) {
+      attempts.push(() =>
+        fetchDayKlinesTencent(symbol, "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get")
+      );
+      attempts.push(() =>
+        fetchDayKlinesTencent(symbol, "https://proxy.finance.qq.com/ifzqgtimg/appstock/app/fqkline/get")
+      );
     }
+    if (secid) attempts.push(() => fetchDayKlinesEastmoney(secid));
+    if (/^\d{6}$/.test(code)) attempts.push(() => fetchDayKlinesSohu(code));
+
+    let lastErr = null;
+    for (const run of attempts) {
+      try {
+        const bars = await run();
+        if (bars && bars.length) return bars;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw new Error(friendlyNetError(lastErr || new Error("未能获取 K 线数据")));
+  }
+
+  async function fetchMinuteClosesEastmoney(secid, minutes = 15, count = 250) {
+    const url =
+      "https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=" +
+      encodeURIComponent(secid) +
+      "&ut=fa5fd1943c7b386f172d6893dbfba10b&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56&klt=" +
+      minutes +
+      "&fqt=1&end=20500101&lmt=" +
+      count;
+    const data = await fetchJsonp(url, 15000);
+    const rows = data?.data?.klines;
+    if (!Array.isArray(rows) || !rows.length) return null;
+    return rows.map((line) => parseFloat(String(line).split(",")[2]));
+  }
+
+  async function fetchMinuteCloses(symbol, minutes = 15, count = 250, secid = null) {
+    if (symbol) {
+      const bases = [
+        "https://web.ifzq.gtimg.cn/appstock/app/kline/mkline",
+        "https://proxy.finance.qq.com/ifzqgtimg/appstock/app/kline/mkline",
+      ];
+      for (const base of bases) {
+        try {
+          const url = `${base}?param=${symbol},m${minutes},,${count}`;
+          const data = await fetchCorsJson(url);
+          const node = data?.data?.[symbol];
+          const rows = node?.[`m${minutes}`];
+          if (rows && rows.length) return rows.map((r) => parseFloat(r[2]));
+        } catch (_) {
+          /* try next */
+        }
+      }
+    }
+    if (secid) {
+      try {
+        return await fetchMinuteClosesEastmoney(secid, minutes, count);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function quoteFromKlines(name, klines) {
+    const last = klines[klines.length - 1];
+    const prev = klines[klines.length - 2] || last;
+    const change = last.close - prev.close;
+    const changePct = prev.close ? (change / prev.close) * 100 : 0;
+    return {
+      name: name || "未知",
+      price: last.close,
+      high: last.high,
+      low: last.low,
+      open: last.open,
+      preClose: prev.close,
+      change,
+      changePct,
+    };
+  }
+
+  async function resolveQuoteAndBars(info) {
+    let quote = null;
+    try {
+      quote = await fetchQuote(info);
+    } catch (_) {
+      quote = null;
+    }
+    const klines = await fetchDayKlines(info.symbol, info.secid);
+    if (!quote || !Number.isFinite(quote.price) || quote.price <= 0) {
+      quote = quoteFromKlines(quote?.name || info.name, klines);
+    }
+    return { quote, klines };
   }
 
   function trendLabel(price, ma) {
@@ -223,11 +389,12 @@
     loading.textContent = "获取实时行情...";
 
     try {
-      const quote = await fetchQuote(info);
+      const pack = await resolveQuoteAndBars(info);
+      const quote = pack.quote;
       const { name, price, change, changePct, high, low, open, preClose } = quote;
 
       loading.textContent = "计算日线均线...";
-      const klines = await fetchDayKlines(info.symbol);
+      const klines = pack.klines;
       const closes = klines.map((k) => k.close);
       const last = closes.length - 1;
       const current = {
@@ -240,7 +407,7 @@
 
       loading.textContent = "读取 15 分钟映射...";
       let m15 = { ma99: null, ma225: null };
-      const c15 = await fetchMinuteCloses(info.symbol, 15, 250);
+      const c15 = await fetchMinuteCloses(info.symbol, 15, 250, info.secid);
       if (c15 && c15.length) {
         const i15 = c15.length - 1;
         m15 = {
@@ -311,7 +478,7 @@
       `;
     } catch (e) {
       error.hidden = false;
-      error.textContent = e.message || "分析失败";
+      error.textContent = friendlyNetError(e);
     } finally {
       loading.hidden = true;
     }
@@ -1353,12 +1520,15 @@
     box.scrollTop = box.scrollHeight;
   }
 
+  let reviewInFlight = false;
   async function runReview(opts = {}) {
     const input = document.getElementById("reviewInput");
     const result = document.getElementById("reviewResult");
     const loading = document.getElementById("reviewLoading");
     const error = document.getElementById("reviewError");
     if (!input || !result || !loading || !error) return;
+    if (reviewInFlight) return;
+    reviewInFlight = true;
 
     result.hidden = true;
     error.hidden = true;
@@ -1366,6 +1536,7 @@
     if (!raw) {
       error.hidden = false;
       error.textContent = "请输入股票代码，或问「代码 + 适不适合买/卖」";
+      reviewInFlight = false;
       return;
     }
 
@@ -1375,6 +1546,7 @@
       error.hidden = false;
       error.textContent = "请输入可复盘的股票 / 指数 / ETF 代码。";
       appendCoachBubble("bot", "没识别到有效代码。试试六位代码，例如 <code>600584</code>。");
+      reviewInFlight = false;
       return;
     }
 
@@ -1385,10 +1557,11 @@
     loading.hidden = false;
     loading.textContent = "拉取行情并对照买卖规则...";
     try {
-      const quote = await fetchQuote(info);
+      const pack = await resolveQuoteAndBars(info);
+      const quote = pack.quote;
       loading.textContent = "计算均线、量能与模板匹配...";
-      const klines = await fetchDayKlines(info.symbol);
-      const m15 = await fetchMinuteCloses(info.symbol, 15, 250);
+      const klines = pack.klines;
+      const m15 = await fetchMinuteCloses(info.symbol, 15, 250, info.secid);
       const ctx = buildContext(quote, klines, m15);
       const ranked = matchTemplates(ctx);
       const holdStatus = getHoldStatus();
@@ -1403,17 +1576,22 @@
       const sellBest = gate.sellBest;
       const fit = buyBest ? `${buyBest.title} ${buyBest.score}%` : "买点未成型";
       const sellFit = sellBest ? `${sellBest.title} ${sellBest.score}%` : "卖点未成型";
+      const stNote = /ST/i.test(quote.name || "")
+        ? `<br/><span style="color:var(--rise)">注意：这是 ST/*ST 风险警示股，规则契合度也不能当安全信号。</span>`
+        : "";
       appendCoachBubble(
         "bot",
-        `<strong>${quote.name}（${info.name || code}）· ${gate.title}</strong><br/>${gate.summary}<br/>买点契合：${fit}<br/>卖点契合：${sellFit}<br/><span style="color:var(--muted)">下方有完整持仓建议与价格带。契合度不是胜率。</span>`
+        `<strong>${quote.name}（${info.name || code}）· ${gate.title}</strong><br/>${gate.summary}<br/>买点契合：${fit}<br/>卖点契合：${sellFit}${stNote}<br/><span style="color:var(--muted)">下方有完整持仓建议与价格带。契合度不是胜率。</span>`
       );
       input.value = "";
     } catch (e) {
+      const tip = friendlyNetError(e);
       error.hidden = false;
-      error.textContent = e.message || "问答失败";
-      appendCoachBubble("bot", `这次没跑通：${e.message || "请稍后再试"}`);
+      error.textContent = tip;
+      appendCoachBubble("bot", `这次没跑通：${tip}`);
     } finally {
       loading.hidden = true;
+      reviewInFlight = false;
     }
   }
 
@@ -1605,40 +1783,14 @@
     return out;
   }
 
-  function quoteFromKlines(name, klines) {
-    const last = klines[klines.length - 1];
-    const prev = klines[klines.length - 2] || last;
-    const change = last.close - prev.close;
-    const changePct = prev.close ? (change / prev.close) * 100 : 0;
-    return {
-      name: name || "未知",
-      price: last.close,
-      high: last.high,
-      low: last.low,
-      open: last.open,
-      preClose: prev.close,
-      change,
-      changePct,
-    };
-  }
-
   async function scoreOnePick(item, opts = {}) {
     const fast = opts.fast !== false;
     const info = getSecId(item.code);
     if (!info || !info.symbol) throw new Error("代码无效");
-    let quote = null;
-    try {
-      quote = await fetchQuote(info);
-    } catch (_) {
-      quote = null;
-    }
-    const klines = await fetchDayKlines(info.symbol);
-    if (!quote || !Number.isFinite(quote.price) || quote.price <= 0) {
-      quote = quoteFromKlines(item.name || info.name, klines);
-    } else if (item.name) {
-      quote.name = item.name;
-    }
-    const m15 = fast ? null : await fetchMinuteCloses(info.symbol, 15, 180);
+    const pack = await resolveQuoteAndBars(info);
+    const quote = item.name ? { ...pack.quote, name: item.name } : pack.quote;
+    const klines = pack.klines;
+    const m15 = fast ? null : await fetchMinuteCloses(info.symbol, 15, 180, info.secid);
     const ctx = buildContext(quote, klines, m15);
     const ranked = matchTemplates(ctx);
     const gate = decideEntryGate(ctx, ranked);
