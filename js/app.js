@@ -488,7 +488,6 @@
         const prev5VolMax = Math.max(...vols.slice(-6, -1).filter((v) => v > 0), 0);
         const look60 = vols.slice(-61, -1);
         const peakVol60 = Math.max(...look60.filter((v) => v > 0), 0);
-        const peakVolIdxRel = look60.lastIndexOf(peakVol60);
         const doubleOverPrev5 = prev5VolMax > 0 && volLast >= prev5VolMax * 2;
         const tripleVol = volAvg10 > 0 && volLast >= volAvg10 * 2.8;
         const last3 = klines.slice(-3);
@@ -497,7 +496,6 @@
         const threeUpGain =
           threeUp && last3[0].open > 0 ? (last3[2].close - last3[0].open) / last3[0].open : 0;
         const threeUp10 = threeUp && threeUpGain >= 0.1;
-        // max-volume bar in last 12 sessions (exclude today optionally use including today)
         const win = klines.slice(-12);
         let maxVolBar = win[0];
         win.forEach((k) => {
@@ -505,8 +503,27 @@
         });
         const maxVolBodyLow = Math.min(maxVolBar.open, maxVolBar.close);
         const maxVolBodyMid = (maxVolBar.open + maxVolBar.close) / 2;
+        const maxVolBodyHigh = Math.max(maxVolBar.open, maxVolBar.close);
+        const barRange = quote.high - quote.low;
+        const lowerShadow = Math.min(quote.open, quote.price) - quote.low;
+        const longLowerShadow = barRange > 0 && lowerShadow / barRange >= 0.5;
+        const needle2x =
+          barRange > 0 &&
+          Math.abs(quote.open - quote.price) > 0 &&
+          lowerShadow / Math.max(Math.abs(quote.open - quote.price), quote.price * 0.001) >= 2;
+        const nearMa20 = ma20[last] != null && near(quote.price, ma20[last], 0.02);
+        const stackVol =
+          vols[last] > 0 &&
+          vols[last - 1] > 0 &&
+          vols[last] >= vols[last - 1] &&
+          closes[last] >= closes[last - 1] &&
+          closes[last - 1] >= (closes[last - 2] || 0);
+        const quarterVsMax =
+          (maxVolBar.volume || 0) > 0 && volLast > 0 && volLast <= maxVolBar.volume * 0.28;
         const nearCostLow = near(quote.price, maxVolBodyLow, 0.02) || near(quote.low, maxVolBodyLow, 0.02);
         const nearCostHalf = near(quote.price, maxVolBodyMid, 0.02) || near(quote.low, maxVolBodyMid, 0.02);
+        const reclaimCost =
+          quote.low <= maxVolBodyLow * 1.005 && quote.price >= maxVolBodyHigh * 0.995;
         const shrinkHalfVsMax =
           (maxVolBar.volume || 0) > 0 && volLast > 0 && volLast <= maxVolBar.volume * 0.55;
         const entityNewHigh = quote.price >= Math.max(...closes.slice(-6, -1)) * 0.998;
@@ -525,6 +542,12 @@
           volExceedsPriorPeak,
           stagnantHuge,
           volLaunchOk: doubleOverPrev5 || threeUp10 || tripleVol,
+          longLowerShadow,
+          needle2x,
+          nearMa20,
+          stackVol,
+          quarterVsMax,
+          reclaimCost,
         };
       })(),
     };
@@ -787,13 +810,26 @@
         id: "buyVol",
         side: "buy",
         title: "买点 V · 录像量能回踩",
-        action: "对应「通用大周期分时」：启动后找最大量阳线成本区，实体新高且缩到约一半时，回踩成本下沿/半位再试；破位或放量滞涨先走。",
+        action: "对应「通用大周期分时 / 爆量大阳」：启动后锚定最大量成本区；缩半或地量后再回踩/站回成本区试错。破位或放量滞涨先走。",
         checks: [
-          { ok: ctx.volLaunchOk, text: "三连阳约10% / 倍量过前五 / 近端3倍量之一成立" },
-          { ok: ctx.entityNewHigh || structureOk, text: "实体创新高或结构未明显破坏" },
-          { ok: ctx.shrinkHalfVsMax || shrinkVol, text: "相对最大量缩至约一半（卖压释放）" },
-          { ok: ctx.nearCostLow || ctx.nearCostHalf || ctx.touchedMaToday, text: "回踩最大量成本区或关键支撑" },
+          { ok: ctx.volLaunchOk || ctx.stackVol || ctx.volExceedsPriorPeak, text: "三连阳约10% / 倍量过前五 / 堆量或底部超量之一" },
+          { ok: ctx.entityNewHigh || ctx.reclaimCost || structureOk, text: "实体新高、反包成本区或结构未坏" },
+          { ok: ctx.shrinkHalfVsMax || ctx.quarterVsMax || shrinkVol, text: "缩半洗盘或约1/4地量（卖压释放）" },
+          { ok: ctx.nearCostLow || ctx.nearCostHalf || ctx.nearMa20 || ctx.longLowerShadow || ctx.needle2x, text: "回踩成本/MA20，或金针/长下影测试" },
           { ok: !ctx.stagnantHuge && !ctx.hugeVolNoRise, text: "未见放量滞涨破坏逻辑" },
+        ],
+      },
+      {
+        id: "buyCons",
+        side: "buy",
+        title: "买点 H · 横盘起爆观察",
+        action: "前有放量连阳，横盘不深调且涨放回调缩；贴近 MA20 出现长下影测试时加入观察，确认后再小仓，不追深调破位票。",
+        checks: [
+          { ok: ctx.volLaunchOk || ctx.stackVol || ctx.expandVol, text: "前段有放量/堆量进场痕迹" },
+          { ok: ctx.recentRangePct <= 0.12 || ctx.arrangement !== "偏空头", text: "近期波动收敛、非单边深跌" },
+          { ok: ctx.nearMa20, text: "价格靠近 MA20 洗盘结束带" },
+          { ok: ctx.longLowerShadow || ctx.needle2x || (ctx.shrinkVol && ctx.touchedMaToday), text: "长下影/金针测试或缩量回踩均线" },
+          { ok: !ctx.failedBreak && !ctx.stagnantHuge, text: "未见假突破或放量滞涨" },
         ],
       },
       {
@@ -882,7 +918,8 @@
     if (buyBest.id === "buyA") reasons.push("强势回踩逻辑成立时，只适合分批低吸，不追高。");
     if (buyBest.id === "buyB") reasons.push("收敛变盘区先小仓试错，不满仓赌方向。");
     if (buyBest.id === "buyC") reasons.push("突破后回踩确认，比第一次冲动追突破更稳。");
-    if (buyBest.id === "buyVol") reasons.push("量能回踩（录像）：成本区+缩半确认，仍只小仓试错。");
+    if (buyBest.id === "buyVol") reasons.push("量能回踩（录像）：成本区+缩半/地量确认，仍只小仓试错。");
+    if (buyBest.id === "buyCons") reasons.push("横盘起爆观察：MA20 测试成立时再动手，不追已经飞起来的票。");
     if (ctx.tPoor) reasons.push("振幅偏小，即使试仓也要降低做 T 预期。");
 
     return {
@@ -1141,7 +1178,7 @@
   function highlightTemplateCards(ranked) {
     const hotId = (ranked.find((t) => t.score >= 60) || ranked[0] || {}).id;
     document.querySelectorAll(".template-card").forEach((card, idx) => {
-      const map = ["buyA", "buyB", "buyC", "sellA", "sellB", "buyVol", "sellVol"];
+      const map = ["buyA", "buyB", "buyC", "buyVol", "buyCons", "sellA", "sellB", "sellVol"];
       const id = card.dataset.id || map[idx];
       card.classList.toggle("is-hot", id === hotId);
     });
