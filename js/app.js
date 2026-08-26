@@ -16,11 +16,14 @@
 
   let currentIdx = "000001";
   const idxDataCache = {};
+  const ENGINE = document.body?.dataset?.engine || "all"; // ma | volume | all
+  const MA_TEMPLATE_IDS = new Set(["buyA", "buyB", "buyC", "sellA", "sellB"]);
+  const VOL_TEMPLATE_IDS = new Set(["buyVol", "buyCtrl", "buyCons", "sellVol"]);
 
   // ---------- UI helpers ----------
   const nav = document.getElementById("siteNav");
   window.addEventListener("scroll", () => {
-    nav.classList.toggle("is-scrolled", window.scrollY > 20);
+    if (nav) nav.classList.toggle("is-scrolled", window.scrollY > 20);
   });
 
   const revealEls = document.querySelectorAll(".reveal");
@@ -117,7 +120,7 @@
     if (/^[6]\d{5}$/.test(code)) return { secid: "1." + code, symbol: "sh" + code, type: "股票", name: code };
     if (/^(000|001)\d{3}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "股票", name: code };
     if (/^(002|003)\d{3}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "股票", name: code };
-    if (/^(300|301)\d{3}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "股票", name: code };
+    if (/^30\d{4}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "股票", name: code };
     if (/^[48]\d{5}$/.test(code)) return { secid: "0." + code, symbol: "bj" + code, type: "股票", name: code };
     // ETF: 15xxxx / 16xxxx / 18xxxx (SZ), 51xxxx / 56xxxx / 58xxxx (SH)
     if (/^(15|16|18)\d{4}$/.test(code)) return { secid: "0." + code, symbol: "sz" + code, type: "ETF", name: code };
@@ -882,6 +885,11 @@
     ];
 
     return templates
+      .filter((t) => {
+        if (ENGINE === "ma") return MA_TEMPLATE_IDS.has(t.id);
+        if (ENGINE === "volume") return VOL_TEMPLATE_IDS.has(t.id);
+        return true;
+      })
       .map((t) => {
         const hit = t.checks.filter((c) => c.ok).length;
         const score = Math.round((hit / t.checks.length) * 100);
@@ -900,20 +908,70 @@
     const sellBest = ranked.filter((t) => t.side === "sell").sort((a, b) => b.score - a.score)[0];
     const reasons = [];
 
+    if (ENGINE === "volume") {
+      const hardNo =
+        (sellBest && sellBest.score >= 75) ||
+        ctx.stagnantHuge ||
+        ctx.hugeVolNoRise ||
+        (ctx.failedBreak && (!buyBest || buyBest.score < 80));
+      if (hardNo) {
+        if (ctx.stagnantHuge || ctx.hugeVolNoRise) reasons.push("放量滞涨/巨量不涨，量能剧本先回避新开仓。");
+        if (ctx.failedBreak) reasons.push("突破失败迹象，先不追。");
+        if (sellBest && sellBest.score >= 60) reasons.push(`卖点更匹配：${sellBest.title}（${sellBest.score}%）。`);
+        return {
+          verdict: "no",
+          title: "不建议买入",
+          summary: "量能规则偏防守：先观望或处理已有仓，不新增。",
+          reasons,
+          buyBest,
+          sellBest,
+        };
+      }
+      const waitLike =
+        !buyBest ||
+        buyBest.score < 60 ||
+        (sellBest && sellBest.score >= buyBest.score) ||
+        (buyBest.id === "buyCons" && buyBest.score < 80);
+      if (waitLike) {
+        if (!buyBest || buyBest.score < 60) reasons.push("量能买点模板未齐。");
+        if (sellBest && buyBest && sellBest.score >= buyBest.score) reasons.push("卖点契合不低于买点，先等。");
+        if (buyBest?.id === "buyCons") reasons.push("横盘起爆仍偏观察，等确认更稳。");
+        return {
+          verdict: "wait",
+          title: "暂不建议买入",
+          summary: "可以盯着缩半回踩/站回成本或放量突破确认，再动手。",
+          reasons,
+          buyBest,
+          sellBest,
+        };
+      }
+      reasons.push(`量能买点更贴近：${buyBest.title}（${buyBest.score}%）。`);
+      if (buyBest.id === "buyVol") reasons.push("爆量后缩量回踩：弱建还要等放量突破。");
+      if (buyBest.id === "buyCtrl") reasons.push("强控盘剧本：不要用天量标准硬套。");
+      if (buyBest.id === "buyCons") reasons.push("横盘起爆：确认后再小仓。");
+      reasons.push("分时右空等同细节仍需人工核对。");
+      return {
+        verdict: "yes",
+        title: buyBest.score >= 80 ? "可小仓试错" : "可分批关注",
+        summary: "量能条件相对更好，仍只建议小仓，并与板块情绪交叉验证。",
+        reasons,
+        buyBest,
+        sellBest,
+      };
+    }
+
     const hardNo =
       (sellBest && sellBest.id === "sellB" && sellBest.score >= 60) ||
-      (sellBest && sellBest.id === "sellVol" && sellBest.score >= 75) ||
       ctx.failedBreak ||
       (ctx.arrangement === "偏空头" && (!buyBest || buyBest.score < 60)) ||
-      (ctx.hugeVolNoRise && sellBest && sellBest.score >= 50) ||
-      (ctx.stagnantHuge && (!buyBest || buyBest.score < 80));
+      (ctx.hugeVolNoRise && sellBest && sellBest.score >= 50);
 
     if (hardNo) {
       if (ctx.failedBreak || (sellBest && sellBest.id === "sellB" && sellBest.score >= 60)) {
         reasons.push("更像突破失败 / 假突破，不宜新开多仓。");
       }
       if (ctx.arrangement === "偏空头") reasons.push("均线结构偏空，先防守。");
-      if (ctx.hugeVolNoRise || ctx.stagnantHuge) reasons.push("放量滞涨/巨量不涨（录像卖点 V），先处理风险。");
+      if (ctx.hugeVolNoRise) reasons.push("出现巨量不涨，资金态度偏分歧。");
       if (sellBest && sellBest.score >= 60) reasons.push(`卖点模板更匹配：${sellBest.title}（${sellBest.score}%）。`);
       return {
         verdict: "no",
@@ -950,16 +1008,12 @@
     if (buyBest.id === "buyA") reasons.push("强势回踩逻辑成立时，只适合分批低吸，不追高。");
     if (buyBest.id === "buyB") reasons.push("收敛变盘区先小仓试错，不满仓赌方向。");
     if (buyBest.id === "buyC") reasons.push("突破后回踩确认，比第一次冲动追突破更稳。");
-    if (buyBest.id === "buyVol") reasons.push("爆量后缩量回踩：先确认启动与洗盘分阶段，弱建还要等放量突破。");
-    if (buyBest.id === "buyCtrl") reasons.push("强控盘剧本：看重拉升量小+缩量回踩，不要用天量标准去套。");
-    if (buyBest.id === "buyCons") reasons.push("横盘起爆观察：MA20 测试成立时再动手，不追已经飞起来的票。");
     if (ctx.tPoor) reasons.push("振幅偏小，即使试仓也要降低做 T 预期。");
-    reasons.push("分时右空/同区双板等细节仍需人工核对（见笔记审计）。");
 
     return {
       verdict: "yes",
       title: buyBest.score >= 80 ? "可小仓试错" : "可分批关注",
-      summary: "技术条件相对更好，但仍要先过主营/主线人工闸门，再按仓位计划执行。",
+      summary: "均线条件相对更好，仍要人工过主营/主线闸门，再按仓位计划执行。",
       reasons,
       buyBest,
       sellBest,
@@ -1389,32 +1443,202 @@
   if (historyClearBtn) historyClearBtn.addEventListener("click", clearReviewHistory);
   renderReviewHistory();
 
-  // ---------- Rules-based observation picks ----------
-  const COACH_UNIVERSE = [
-    { code: "300308", tip: "主线风向 · CPO" },
-    { code: "688981", tip: "主线风向 · 半导体" },
-    { code: "600584", tip: "先进封装 / 关注池" },
-    { code: "688361", tip: "设备检测 / 关注池" },
-    { code: "688521", tip: "芯片 IP / 关注池" },
-    { code: "603186", tip: "材料主题 / 关注池" },
-    { code: "300285", tip: "材料 / 关注池" },
-    { code: "600176", tip: "玻纤龙头 / 关注池" },
-    { code: "600962", tip: "持仓风险观察" },
-    { code: "600126", tip: "短线观察" },
-    { code: "000905", tip: "港口卫星" },
-    { code: "601212", tip: "有色卫星" },
-    { code: "510300", tip: "宽基底仓对照" },
-    { code: "159948", tip: "成长β对照" },
-    { code: "300750", tip: "新能源样本" },
-    { code: "600519", tip: "权重样本" },
-  ];
+  // ---------- Full-market volume picks (coach only) ----------
+  function marketListUrl(pn, pz) {
+    const fs = "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23";
+    const fields = "f12,f14,f2,f3,f6,f8,f10,f20";
+    return (
+      "https://push2delay.eastmoney.com/api/qt/clist/get?pn=" +
+      pn +
+      "&pz=" +
+      pz +
+      "&po=1&np=1&fltt=2&invt=2&fid=f3&fs=" +
+      encodeURIComponent(fs) +
+      "&fields=" +
+      fields
+    );
+  }
 
-  async function scoreOnePick(item) {
+  function isBoardAShare(code, name) {
+    if (!/^\d{6}$/.test(code)) return false;
+    if (/ST|退|^N|^C/i.test(name || "")) return false;
+    return /^(60|00|30|68)\d{4}$/.test(code);
+  }
+
+  function boardLabel(code) {
+    if (/^68\d{4}$/.test(code)) return "科创板";
+    if (/^30\d{4}$/.test(code)) return "创业板";
+    if (/^60\d{4}$/.test(code)) return "沪市主板";
+    return "深市主板";
+  }
+
+  function boardBucket(code) {
+    if (/^68\d{4}$/.test(code)) return "star";
+    if (/^30\d{4}$/.test(code)) return "chinext";
+    if (/^60\d{4}$/.test(code)) return "sh";
+    return "sz";
+  }
+
+  function numOr0(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function coarseMarketScore(row, closed) {
+    const code = row.code;
+    if (closed) {
+      const mcap = numOr0(row.f20);
+      let s = 8;
+      if (mcap >= 5e9 && mcap <= 5e10) s += 42;
+      else if (mcap >= 2e9 && mcap <= 1.2e11) s += 28;
+      else if (mcap > 0) s += 12;
+      s += parseInt(code.slice(-3), 10) % 19;
+      return s;
+    }
+    const pct = numOr0(row.f3);
+    const amount = numOr0(row.f6);
+    const turnover = numOr0(row.f8);
+    const vr = numOr0(row.f10);
+    const mcap = numOr0(row.f20);
+    let s = 0;
+    if (amount > 0) s += Math.min(28, Math.log10(amount + 1) * 3.2);
+    if (vr >= 1.8 && vr <= 4.2) s += 22;
+    else if (vr >= 1.3 && vr < 1.8) s += 12;
+    else if (vr > 4.2 && vr <= 6) s += 8;
+    if (pct >= 2 && pct <= 7) s += 18;
+    else if (pct > 7 && pct <= 9.8) s += 10;
+    else if (pct > 0 && pct < 2) s += 6;
+    else if (pct < -3 && pct > -7) s += 8;
+    if (turnover >= 3 && turnover <= 12) s += 10;
+    if (mcap > 0 && mcap < 8e10) s += 8;
+    return s;
+  }
+
+  function pickScanCandidates(list, depth, closed) {
+    const scored = list
+      .map((row) => ({ row, coarse: coarseMarketScore(row, closed) }))
+      .sort((a, b) => b.coarse - a.coarse);
+    const quotas = {
+      sh: Math.ceil(depth * 0.28),
+      sz: Math.ceil(depth * 0.28),
+      chinext: Math.ceil(depth * 0.24),
+      star: Math.ceil(depth * 0.24),
+    };
+    const picked = [];
+    const used = new Set();
+    for (const [bucket, q] of Object.entries(quotas)) {
+      let n = 0;
+      for (const item of scored) {
+        if (n >= q) break;
+        if (boardBucket(item.row.code) !== bucket) continue;
+        if (used.has(item.row.code)) continue;
+        picked.push(item);
+        used.add(item.row.code);
+        n++;
+      }
+    }
+    for (const item of scored) {
+      if (picked.length >= depth) break;
+      if (used.has(item.row.code)) continue;
+      picked.push(item);
+      used.add(item.row.code);
+    }
+    return picked.slice(0, depth);
+  }
+
+  async function fetchMarketUniverse(onProgress) {
+    const pageSize = 100;
+    const first = await fetchJsonp(marketListUrl(1, pageSize), 20000);
+    const total = Number(first?.data?.total) || 0;
+    const pages = Math.max(1, Math.ceil((total || pageSize) / pageSize));
+    const all = [];
+
+    function absorb(diff) {
+      if (!Array.isArray(diff)) return;
+      for (const row of diff) {
+        const code = String(row.f12 || "");
+        const name = String(row.f14 || "");
+        if (!isBoardAShare(code, name)) continue;
+        all.push({
+          code,
+          name,
+          f2: row.f2,
+          f3: row.f3,
+          f6: row.f6,
+          f8: row.f8,
+          f10: row.f10,
+          f20: row.f20,
+        });
+      }
+    }
+
+    absorb(first?.data?.diff);
+    onProgress?.(1, pages, all.length);
+
+    for (let start = 2; start <= pages; start += 6) {
+      const batch = [];
+      for (let pn = start; pn < start + 6 && pn <= pages; pn++) batch.push(pn);
+      const parts = await Promise.all(
+        batch.map((pn) => fetchJsonp(marketListUrl(pn, pageSize), 20000).catch(() => null))
+      );
+      for (const data of parts) absorb(data?.data?.diff);
+      onProgress?.(Math.min(start + batch.length - 1, pages), pages, all.length);
+    }
+
+    const closed =
+      all.length > 0 &&
+      all.every((r) => r.f2 === "-" || r.f2 == null || Number(r.f2) === 0);
+    return { list: all, closed, totalReported: total || all.length };
+  }
+
+  async function mapPool(items, concurrency, worker) {
+    const out = new Array(items.length);
+    let cursor = 0;
+    async function runOne() {
+      while (cursor < items.length) {
+        const i = cursor++;
+        out[i] = await worker(items[i], i);
+      }
+    }
+    const n = Math.max(1, Math.min(concurrency, items.length || 1));
+    await Promise.all(Array.from({ length: n }, () => runOne()));
+    return out;
+  }
+
+  function quoteFromKlines(name, klines) {
+    const last = klines[klines.length - 1];
+    const prev = klines[klines.length - 2] || last;
+    const change = last.close - prev.close;
+    const changePct = prev.close ? (change / prev.close) * 100 : 0;
+    return {
+      name: name || "未知",
+      price: last.close,
+      high: last.high,
+      low: last.low,
+      open: last.open,
+      preClose: prev.close,
+      change,
+      changePct,
+    };
+  }
+
+  async function scoreOnePick(item, opts = {}) {
+    const fast = opts.fast !== false;
     const info = getSecId(item.code);
     if (!info || !info.symbol) throw new Error("代码无效");
-    const quote = await fetchQuote(info);
+    let quote = null;
+    try {
+      quote = await fetchQuote(info);
+    } catch (_) {
+      quote = null;
+    }
     const klines = await fetchDayKlines(info.symbol);
-    const m15 = await fetchMinuteCloses(info.symbol, 15, 180);
+    if (!quote || !Number.isFinite(quote.price) || quote.price <= 0) {
+      quote = quoteFromKlines(item.name || info.name, klines);
+    } else if (item.name) {
+      quote.name = item.name;
+    }
+    const m15 = fast ? null : await fetchMinuteCloses(info.symbol, 15, 180);
     const ctx = buildContext(quote, klines, m15);
     const ranked = matchTemplates(ctx);
     const gate = decideEntryGate(ctx, ranked);
@@ -1425,10 +1649,10 @@
         ? buyBest?.score || 0
         : gate.verdict === "wait"
           ? Math.max(35, Math.min(59, buyBest?.score || 40))
-          : Math.min(34, sellBest?.score || 20);
+          : Math.min(34, sellBest?.score || buyBest?.score || 20);
     return {
       code: item.code,
-      tip: item.tip,
+      tip: item.tip || boardLabel(item.code),
       name: quote.name,
       price: quote.price,
       changePct: quote.changePct,
@@ -1448,14 +1672,14 @@
     return 2;
   }
 
-  function renderPicksBoard(rows) {
+  function renderPicksBoard(rows, metaNote) {
     const board = document.getElementById("picksBoard");
     if (!board) return;
     const sorted = [...rows].sort(
       (a, b) => verdictRank(a.verdict) - verdictRank(b.verdict) || b.fitScore - a.fitScore
     );
     const watch = sorted.filter((r) => r.verdict === "yes" || r.verdict === "wait");
-    const avoid = sorted.filter((r) => r.verdict === "no");
+    const avoid = sorted.filter((r) => r.verdict === "no").slice(0, 6);
 
     const card = (r) => `
       <button type="button" class="pick-card" data-verdict="${r.verdict}" data-pick-code="${r.code}">
@@ -1477,14 +1701,18 @@
     board.hidden = false;
     board.innerHTML = `
       <div class="picks-group">
-        <h3>优先观察（更接近可买 / 可盯）</h3>
-        <div class="picks-grid">${watch.length ? watch.map(card).join("") : "<p class='empty-picks'>当前池子里没有过闸门的标的，现金也是仓位。</p>"}</div>
+        <h3>推荐 / 观察（全市场精评后）</h3>
+        <div class="picks-grid">${watch.length ? watch.map(card).join("") : "<p class='empty-picks'>本轮精评后暂无过闸门标的，可加大精评数量或换日再试。</p>"}</div>
       </div>
-      <div class="picks-group">
-        <h3>回避或只处理持仓</h3>
-        <div class="picks-grid">${avoid.length ? avoid.map(card).join("") : "<p class='empty-picks'>暂无硬回避项。</p>"}</div>
-      </div>
-      <p class="picks-footnote">列表按「规则契合」排序，不是胜率排行。点卡片会送进下方问答窗细问。</p>
+      ${
+        avoid.length
+          ? `<div class="picks-group">
+        <h3>精评样本中偏回避（节选）</h3>
+        <div class="picks-grid">${avoid.map(card).join("")}</div>
+      </div>`
+          : ""
+      }
+      <p class="picks-footnote">${metaNote || "列表按规则契合排序，不是胜率。点卡片送入下方问答细问。"}</p>
     `;
     board.querySelectorAll("[data-pick-code]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1497,43 +1725,70 @@
   }
 
   async function runPicksScan() {
+    if (ENGINE !== "volume") return;
     const loading = document.getElementById("picksLoading");
     const error = document.getElementById("picksError");
     const meta = document.getElementById("picksMeta");
     const board = document.getElementById("picksBoard");
+    const depthEl = document.getElementById("picksDepth");
     if (!loading || !error || !board) return;
 
+    const depth = Math.max(20, Math.min(120, Number(depthEl?.value) || 60));
     error.hidden = true;
     loading.hidden = false;
     board.hidden = true;
-    const rows = [];
-    let done = 0;
-    for (const item of COACH_UNIVERSE) {
-      loading.textContent = `正在扫描 ${item.code}（${++done}/${COACH_UNIVERSE.length}）...`;
-      try {
-        rows.push(await scoreOnePick(item));
-      } catch (e) {
-        rows.push({
-          code: item.code,
-          tip: item.tip,
-          name: item.code,
-          price: 0,
-          changePct: 0,
-          verdict: "no",
-          title: "数据不足",
-          summary: e.message || "跳过",
-          fitScore: 0,
-          buyLabel: "--",
-          sellLabel: "--",
-          arrangement: "数据不足",
-        });
+    if (meta) meta.textContent = "拉取全市场列表…";
+
+    try {
+      const uni = await fetchMarketUniverse((page, pages, count) => {
+        loading.textContent = `全市场列表 ${page}/${pages} 页 · 已收 ${count} 只沪深/创业/科创…`;
+      });
+      if (!uni.list.length) {
+        loading.hidden = true;
+        error.hidden = false;
+        error.textContent = "行情列表暂不可用，请稍后重试。";
+        return;
       }
+
+      const candidates = pickScanCandidates(uni.list, depth, uni.closed);
+      loading.textContent =
+        `池 ${uni.list.length} 只（接口 ${uni.totalReported}）→ 精评 Top ${candidates.length}` +
+        (uni.closed ? " · 休市按市值分层粗筛" : " · 按量价粗筛");
+
+      let done = 0;
+      const deep = await mapPool(candidates, 5, async ({ row, coarse }) => {
+        try {
+          const scored = await scoreOnePick(
+            { code: row.code, name: row.name, tip: boardLabel(row.code) + " · 粗分 " + Math.round(coarse) },
+            { fast: true }
+          );
+          done += 1;
+          loading.textContent = `精评量能模板 ${done}/${candidates.length}…`;
+          return scored;
+        } catch (_) {
+          done += 1;
+          loading.textContent = `精评量能模板 ${done}/${candidates.length}…`;
+          return null;
+        }
+      });
+
+      const rows = deep.filter(Boolean);
+      const yesN = rows.filter((r) => r.verdict === "yes").length;
+      const waitN = rows.filter((r) => r.verdict === "wait").length;
+      loading.hidden = true;
+      renderPicksBoard(
+        rows,
+        `全市场扫描 · 池 ${uni.list.length} · 精评 ${candidates.length} · 可关注 ${yesN} · 等待 ${waitN} · 契合度≠胜率`
+      );
+      if (meta) {
+        meta.textContent = `池 ${uni.list.length} · 精评 ${candidates.length} · 可关注 ${yesN} · 等待 ${waitN} · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+      }
+    } catch (err) {
+      loading.hidden = true;
+      error.hidden = false;
+      error.textContent = "扫描失败：" + (err?.message || String(err));
+      if (meta) meta.textContent = "扫描失败，可重试";
     }
-    loading.hidden = true;
-    renderPicksBoard(rows.filter((r) => r.fitScore > 0 || r.price > 0));
-    const yesN = rows.filter((r) => r.verdict === "yes").length;
-    const waitN = rows.filter((r) => r.verdict === "wait").length;
-    if (meta) meta.textContent = `已扫描 ${rows.length} 只 · 可关注 ${yesN} · 等待 ${waitN} · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
   }
 
   const picksBtn = document.getElementById("picksBtn");
