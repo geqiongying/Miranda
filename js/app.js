@@ -39,13 +39,15 @@
 
   const chips = document.querySelectorAll(".code-chip");
   const explain = document.getElementById("codeExplain");
-  chips.forEach((chip) => {
-    chip.addEventListener("click", () => {
-      chips.forEach((c) => c.classList.remove("is-active"));
-      chip.classList.add("is-active");
-      explain.textContent = CODE_MAP[chip.dataset.code] || "";
+  if (chips.length && explain) {
+    chips.forEach((chip) => {
+      chip.addEventListener("click", () => {
+        chips.forEach((c) => c.classList.remove("is-active"));
+        chip.classList.add("is-active");
+        explain.textContent = CODE_MAP[chip.dataset.code] || "";
+      });
     });
-  });
+  }
 
   // ---------- Network / market data ----------
   function fetchJsonp(url, timeoutMs = 12000) {
@@ -312,16 +314,20 @@
     }
   }
 
-  document.getElementById("analyzeBtn").addEventListener("click", analyzeStock);
-  document.getElementById("stockInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") analyzeStock();
-  });
-  document.querySelectorAll(".tool-hints [data-fill]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.getElementById("stockInput").value = btn.dataset.fill;
-      analyzeStock();
+  const analyzeBtn = document.getElementById("analyzeBtn");
+  const stockInputEl = document.getElementById("stockInput");
+  if (analyzeBtn && stockInputEl) {
+    analyzeBtn.addEventListener("click", analyzeStock);
+    stockInputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") analyzeStock();
     });
-  });
+    document.querySelectorAll(".tool-hints [data-fill]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        stockInputEl.value = btn.dataset.fill;
+        analyzeStock();
+      });
+    });
+  }
 
   // ---------- Review engine (knowledge embedded, not displayed as docs) ----------
   // Internal playbook reference (Yange framework): style -> pool -> structure ->
@@ -477,6 +483,92 @@
       failedBreak: quote.high >= prev10High * 0.998 && quote.price < prev10High * 0.995,
       tFriendly: avgAmp5 >= 0.03 || dayAmp >= 0.035,
       tPoor: avgAmp5 > 0 && avgAmp5 < 0.02,
+      // --- 作手老严录像 · 量能篇（Release Videos-Laoyao）---
+      ...(() => {
+        const prev5VolMax = Math.max(...vols.slice(-6, -1).filter((v) => v > 0), 0);
+        const look60 = vols.slice(-61, -1);
+        const peakVol60 = Math.max(...look60.filter((v) => v > 0), 0);
+        const doubleOverPrev5 = prev5VolMax > 0 && volLast >= prev5VolMax * 2;
+        const tripleVol = volAvg10 > 0 && volLast >= volAvg10 * 2.8;
+        const last3 = klines.slice(-3);
+        const threeUp =
+          last3.length === 3 && last3.every((k, i) => i === 0 || k.close >= last3[i - 1].close);
+        const threeUpGain =
+          threeUp && last3[0].open > 0 ? (last3[2].close - last3[0].open) / last3[0].open : 0;
+        const threeUp10 = threeUp && threeUpGain >= 0.1;
+        const win = klines.slice(-12);
+        let maxVolBar = win[0];
+        win.forEach((k) => {
+          if ((k.volume || 0) >= (maxVolBar.volume || 0)) maxVolBar = k;
+        });
+        const maxVolBodyLow = Math.min(maxVolBar.open, maxVolBar.close);
+        const maxVolBodyMid = (maxVolBar.open + maxVolBar.close) / 2;
+        const maxVolBodyHigh = Math.max(maxVolBar.open, maxVolBar.close);
+        const barRange = quote.high - quote.low;
+        const lowerShadow = Math.min(quote.open, quote.price) - quote.low;
+        const longLowerShadow = barRange > 0 && lowerShadow / barRange >= 0.5;
+        const needle2x =
+          barRange > 0 &&
+          Math.abs(quote.open - quote.price) > 0 &&
+          lowerShadow / Math.max(Math.abs(quote.open - quote.price), quote.price * 0.001) >= 2;
+        const nearMa20 = ma20[last] != null && near(quote.price, ma20[last], 0.02);
+        const stackVol =
+          vols[last] > 0 &&
+          vols[last - 1] > 0 &&
+          vols[last] >= vols[last - 1] &&
+          closes[last] >= closes[last - 1] &&
+          closes[last - 1] >= (closes[last - 2] || 0);
+        const quarterVsMax =
+          (maxVolBar.volume || 0) > 0 && volLast > 0 && volLast <= maxVolBar.volume * 0.28;
+        const nearCostLow = near(quote.price, maxVolBodyLow, 0.02) || near(quote.low, maxVolBodyLow, 0.02);
+        const nearCostHalf = near(quote.price, maxVolBodyMid, 0.02) || near(quote.low, maxVolBodyMid, 0.02);
+        const reclaimCost =
+          quote.low <= maxVolBodyLow * 1.005 && quote.price >= maxVolBodyHigh * 0.995;
+        const shrinkHalfVsMax =
+          (maxVolBar.volume || 0) > 0 && volLast > 0 && volLast <= maxVolBar.volume * 0.55;
+        const entityNewHigh = quote.price >= Math.max(...closes.slice(-6, -1)) * 0.998;
+        const volExceedsPriorPeak = peakVol60 > 0 && volLast >= peakVol60 * 0.98;
+        const stagnantHuge = volLast >= volAvg10 * 1.6 && Math.abs(quote.changePct) <= 0.6;
+        // 启动发生在近端（今日或昨日），洗盘则是今日相对最大量收缩
+        const launchRecent =
+          doubleOverPrev5 ||
+          tripleVol ||
+          (vols[last - 1] > 0 && prev5VolMax > 0 && vols[last - 1] >= prev5VolMax * 2) ||
+          (volAvg10 > 0 && vols[last - 1] >= volAvg10 * 2.8);
+        const washToday = shrinkHalfVsMax || quarterVsMax || (volAvg10 > 0 && volLast < volAvg10 * 0.85);
+        // 强控盘近似：近几日上涨但量不夸张，今日缩量回踩
+        const quietRise =
+          closes[last] >= closes[Math.max(0, last - 5)] &&
+          volAvg10 > 0 &&
+          avg(vols.slice(-6)) <= volAvg10 * 1.15;
+        const ctrlPullback = quietRise && washToday && (near(quote.low, ma20[last], 0.025) || nearCostHalf || nearCostLow);
+        return {
+          doubleOverPrev5,
+          tripleVol,
+          threeUp10,
+          maxVolBodyLow,
+          maxVolBodyMid,
+          nearCostLow,
+          nearCostHalf,
+          shrinkHalfVsMax,
+          entityNewHigh,
+          volExceedsPriorPeak,
+          stagnantHuge,
+          volLaunchOk: doubleOverPrev5 || threeUp10 || tripleVol,
+          longLowerShadow,
+          needle2x,
+          nearMa20,
+          stackVol,
+          quarterVsMax,
+          reclaimCost,
+          launchRecent,
+          washToday,
+          quietRise,
+          ctrlPullback,
+          heldAboveDivLow:
+            maxVolBodyLow != null ? quote.low >= maxVolBodyLow * 0.985 : false,
+        };
+      })(),
     };
   }
 
@@ -733,6 +825,60 @@
           { ok: ctx.failedBreak && quote.changePct <= 0.2, text: "反弹尚未重新站上" },
         ],
       },
+      {
+        id: "buyVol",
+        side: "buy",
+        title: "买点 V · 爆量后缩量回踩",
+        action: "剧本：近端先有倍量/3倍量（或堆量）分歧，再缩半或地量洗盘，回踩/站回最大量成本区才试。弱建要等缩半后的放量突破，不把「结构还行」当成买点。短洗不可击穿分歧低点。",
+        checks: [
+          { ok: ctx.launchRecent || ctx.stackVol || ctx.volExceedsPriorPeak, text: "近端已出现启动量（倍量/3倍/堆量/底部超量）" },
+          { ok: ctx.washToday, text: "今日处于缩半或地量洗盘阶段（与启动不同日态）" },
+          { ok: ctx.nearCostLow || ctx.nearCostHalf || ctx.reclaimCost, text: "价格回到最大量成本下沿/半位，或反包站回" },
+          { ok: ctx.heldAboveDivLow || ctx.reclaimCost || ctx.entityNewHigh, text: "未有效击穿分歧成本低点，或已反包/实体新高" },
+          { ok: !ctx.stagnantHuge && !ctx.hugeVolNoRise, text: "未见放量滞涨" },
+        ],
+      },
+      {
+        id: "buyCtrl",
+        side: "buy",
+        title: "买点 Ctl · 强控盘缩量回踩",
+        action: "剧本：资金强势特征——拉升中量并不大、实体新高后缩量回踩。与爆量换手套路分开，不要用天量标准硬套。",
+        checks: [
+          { ok: ctx.quietRise || (ctx.entityNewHigh && !ctx.tripleVol), text: "近端抬升且量能不夸张（拉升中量偏小）" },
+          { ok: ctx.entityNewHigh || structureOk, text: "实体新高或结构仍偏多" },
+          { ok: ctx.washToday || shrinkVol, text: "缩量回踩进行中" },
+          { ok: ctx.ctrlPullback || ctx.nearMa20 || ctx.touchedMaToday, text: "回踩均线/成本附近" },
+          { ok: !ctx.stagnantHuge && !ctx.failedBreak && !ctx.hugeVolNoRise, text: "无滞涨、无假突破" },
+        ],
+      },
+      {
+        id: "buyCons",
+        side: "buy",
+        title: "买点 H · 横盘起爆观察",
+        action: "前有放量连阳，横盘不深调；更理想是区间内涨放回调缩。贴近 MA20 出现长下影/金针测试时观察，确认后再小仓。",
+        checks: [
+          { ok: ctx.launchRecent || ctx.stackVol || ctx.expandVol, text: "前段有放量/堆量进场痕迹" },
+          { ok: ctx.recentRangePct <= 0.12 || ctx.arrangement !== "偏空头", text: "近期波动收敛、非单边深跌" },
+          { ok: ctx.nearMa20, text: "价格靠近 MA20 洗盘结束带" },
+          { ok: ctx.longLowerShadow || ctx.needle2x || (ctx.washToday && ctx.touchedMaToday), text: "长下影/金针测试或缩量回踩均线" },
+          { ok: !ctx.failedBreak && !ctx.stagnantHuge, text: "未见假突破或放量滞涨" },
+        ],
+      },
+      {
+        id: "sellVol",
+        side: "sell",
+        title: "卖点 V · 放量滞涨/破位",
+        action: "录像强调：放量不涨先离场；破掉最大量成本底或放量阴破高，短线逻辑失效。",
+        checks: [
+          { ok: ctx.stagnantHuge || ctx.hugeVolNoRise, text: "放量滞涨 / 巨量不涨" },
+          { ok: ctx.fadeFromHigh || quote.changePct <= 0, text: "冲高回落或当日偏弱" },
+          {
+            ok: (ctx.maxVolBodyLow != null && price < ctx.maxVolBodyLow * 0.995) || ctx.failedBreak,
+            text: "跌破最大量成本底或突破失败",
+          },
+          { ok: ctx.expandVol || ctx.tripleVol, text: "量能仍活跃，不是无声阴跌" },
+        ],
+      },
     ];
 
     return templates
@@ -756,16 +902,18 @@
 
     const hardNo =
       (sellBest && sellBest.id === "sellB" && sellBest.score >= 60) ||
+      (sellBest && sellBest.id === "sellVol" && sellBest.score >= 75) ||
       ctx.failedBreak ||
       (ctx.arrangement === "偏空头" && (!buyBest || buyBest.score < 60)) ||
-      (ctx.hugeVolNoRise && sellBest && sellBest.score >= 50);
+      (ctx.hugeVolNoRise && sellBest && sellBest.score >= 50) ||
+      (ctx.stagnantHuge && (!buyBest || buyBest.score < 80));
 
     if (hardNo) {
       if (ctx.failedBreak || (sellBest && sellBest.id === "sellB" && sellBest.score >= 60)) {
         reasons.push("更像突破失败 / 假突破，不宜新开多仓。");
       }
       if (ctx.arrangement === "偏空头") reasons.push("均线结构偏空，先防守。");
-      if (ctx.hugeVolNoRise) reasons.push("出现巨量不涨，资金态度偏分歧。");
+      if (ctx.hugeVolNoRise || ctx.stagnantHuge) reasons.push("放量滞涨/巨量不涨（录像卖点 V），先处理风险。");
       if (sellBest && sellBest.score >= 60) reasons.push(`卖点模板更匹配：${sellBest.title}（${sellBest.score}%）。`);
       return {
         verdict: "no",
@@ -802,7 +950,11 @@
     if (buyBest.id === "buyA") reasons.push("强势回踩逻辑成立时，只适合分批低吸，不追高。");
     if (buyBest.id === "buyB") reasons.push("收敛变盘区先小仓试错，不满仓赌方向。");
     if (buyBest.id === "buyC") reasons.push("突破后回踩确认，比第一次冲动追突破更稳。");
+    if (buyBest.id === "buyVol") reasons.push("爆量后缩量回踩：先确认启动与洗盘分阶段，弱建还要等放量突破。");
+    if (buyBest.id === "buyCtrl") reasons.push("强控盘剧本：看重拉升量小+缩量回踩，不要用天量标准去套。");
+    if (buyBest.id === "buyCons") reasons.push("横盘起爆观察：MA20 测试成立时再动手，不追已经飞起来的票。");
     if (ctx.tPoor) reasons.push("振幅偏小，即使试仓也要降低做 T 预期。");
+    reasons.push("分时右空/同区双板等细节仍需人工核对（见笔记审计）。");
 
     return {
       verdict: "yes",
@@ -1060,8 +1212,9 @@
   function highlightTemplateCards(ranked) {
     const hotId = (ranked.find((t) => t.score >= 60) || ranked[0] || {}).id;
     document.querySelectorAll(".template-card").forEach((card, idx) => {
-      const map = ["buyA", "buyB", "buyC", "sellA", "sellB"];
-      card.classList.toggle("is-hot", map[idx] === hotId);
+      const map = ["buyA", "buyB", "buyC", "buyVol", "buyCtrl", "buyCons", "sellA", "sellB", "sellVol"];
+      const id = card.dataset.id || map[idx];
+      card.classList.toggle("is-hot", id === hotId);
     });
   }
 
@@ -1130,59 +1283,105 @@
     });
   }
 
-  async function runReview() {
+  function extractAskCode(raw) {
+    const text = String(raw || "").trim().toUpperCase();
+    const m = text.match(/\b((?:SH|SZ|BJ)?\d{6}|BK\d{3,5})\b/);
+    return m ? m[1].replace(/^(SH|SZ|BJ)/, "") : text;
+  }
+
+  function appendCoachBubble(role, html) {
+    const box = document.getElementById("coachMessages");
+    if (!box) return;
+    const el = document.createElement("div");
+    el.className = `coach-bubble ${role}`;
+    el.innerHTML = html;
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function runReview(opts = {}) {
     const input = document.getElementById("reviewInput");
     const result = document.getElementById("reviewResult");
     const loading = document.getElementById("reviewLoading");
     const error = document.getElementById("reviewError");
+    if (!input || !result || !loading || !error) return;
 
     result.hidden = true;
     error.hidden = true;
-    const code = input.value.trim();
-    if (!code) {
+    const raw = (opts.preset || input.value).trim();
+    if (!raw) {
       error.hidden = false;
-      error.textContent = "请输入测试股票代码";
+      error.textContent = "请输入股票代码，或问「代码 + 适不适合买/卖」";
       return;
     }
 
+    const code = extractAskCode(raw);
     const info = getSecId(code);
     if (!info || !info.symbol) {
       error.hidden = false;
-      error.textContent = "请输入可复盘的股票 / 指数代码（板块代码暂不支持完整复盘）。";
+      error.textContent = "请输入可复盘的股票 / 指数 / ETF 代码。";
+      appendCoachBubble("bot", "没识别到有效代码。试试六位代码，例如 <code>600584</code>。");
       return;
     }
 
+    if (!opts.silentUser) {
+      appendCoachBubble("user", raw.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c])));
+    }
+
     loading.hidden = false;
-    loading.textContent = "拉取行情并对照模板...";
+    loading.textContent = "拉取行情并对照买卖规则...";
     try {
       const quote = await fetchQuote(info);
-      loading.textContent = "计算均线与量能...";
+      loading.textContent = "计算均线、量能与模板匹配...";
       const klines = await fetchDayKlines(info.symbol);
       const m15 = await fetchMinuteCloses(info.symbol, 15, 250);
       const ctx = buildContext(quote, klines, m15);
       const ranked = matchTemplates(ctx);
       const holdStatus = getHoldStatus();
+      const playbook = buildPlaybook(ctx, ranked, holdStatus);
+      const gate = playbook.gate;
       result.hidden = false;
       result.innerHTML = renderReviewResult(info, { ...quote, name: quote.name }, ranked, ctx, holdStatus);
       highlightTemplateCards(ranked);
       pushReviewHistory({ code: info.name || code, name: quote.name || info.name || code });
-      // sync into technical lab for convenience
-      document.getElementById("stockInput").value = code;
+
+      const buyBest = gate.buyBest;
+      const sellBest = gate.sellBest;
+      const fit = buyBest ? `${buyBest.title} ${buyBest.score}%` : "买点未成型";
+      const sellFit = sellBest ? `${sellBest.title} ${sellBest.score}%` : "卖点未成型";
+      appendCoachBubble(
+        "bot",
+        `<strong>${quote.name}（${info.name || code}）· ${gate.title}</strong><br/>${gate.summary}<br/>买点契合：${fit}<br/>卖点契合：${sellFit}<br/><span style="color:var(--muted)">下方有完整持仓建议与价格带。契合度不是胜率。</span>`
+      );
+      input.value = "";
     } catch (e) {
       error.hidden = false;
-      error.textContent = e.message || "复盘失败";
+      error.textContent = e.message || "问答失败";
+      appendCoachBubble("bot", `这次没跑通：${e.message || "请稍后再试"}`);
     } finally {
       loading.hidden = true;
     }
   }
 
-  document.getElementById("reviewBtn").addEventListener("click", runReview);
-  document.getElementById("reviewInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") runReview();
-  });
+  const coachForm = document.getElementById("coachForm");
+  if (coachForm) {
+    coachForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      runReview();
+    });
+  } else {
+    const reviewBtn = document.getElementById("reviewBtn");
+    if (reviewBtn) reviewBtn.addEventListener("click", () => runReview());
+    const reviewInput = document.getElementById("reviewInput");
+    if (reviewInput) {
+      reviewInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") runReview();
+      });
+    }
+  }
   document.querySelectorAll("[data-review]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      document.getElementById("reviewInput").value = btn.dataset.review;
+      document.getElementById("reviewInput").value = `${btn.dataset.review} 现在适合买入或卖出吗？`;
       runReview();
     });
   });
@@ -1190,221 +1389,173 @@
   if (historyClearBtn) historyClearBtn.addEventListener("click", clearReviewHistory);
   renderReviewHistory();
 
-  // ---------- Index chart ----------
-  function showIdxLoading(msg) {
-    const el = document.getElementById("idxLoading");
-    el.hidden = false;
-    el.textContent = msg;
-    document.getElementById("idxError").hidden = true;
+  // ---------- Rules-based observation picks ----------
+  const COACH_UNIVERSE = [
+    { code: "300308", tip: "主线风向 · CPO" },
+    { code: "688981", tip: "主线风向 · 半导体" },
+    { code: "600584", tip: "先进封装 / 关注池" },
+    { code: "688361", tip: "设备检测 / 关注池" },
+    { code: "688521", tip: "芯片 IP / 关注池" },
+    { code: "603186", tip: "材料主题 / 关注池" },
+    { code: "300285", tip: "材料 / 关注池" },
+    { code: "600176", tip: "玻纤龙头 / 关注池" },
+    { code: "600962", tip: "持仓风险观察" },
+    { code: "600126", tip: "短线观察" },
+    { code: "000905", tip: "港口卫星" },
+    { code: "601212", tip: "有色卫星" },
+    { code: "510300", tip: "宽基底仓对照" },
+    { code: "159948", tip: "成长β对照" },
+    { code: "300750", tip: "新能源样本" },
+    { code: "600519", tip: "权重样本" },
+  ];
+
+  async function scoreOnePick(item) {
+    const info = getSecId(item.code);
+    if (!info || !info.symbol) throw new Error("代码无效");
+    const quote = await fetchQuote(info);
+    const klines = await fetchDayKlines(info.symbol);
+    const m15 = await fetchMinuteCloses(info.symbol, 15, 180);
+    const ctx = buildContext(quote, klines, m15);
+    const ranked = matchTemplates(ctx);
+    const gate = decideEntryGate(ctx, ranked);
+    const buyBest = gate.buyBest;
+    const sellBest = gate.sellBest;
+    const fitScore =
+      gate.verdict === "yes"
+        ? buyBest?.score || 0
+        : gate.verdict === "wait"
+          ? Math.max(35, Math.min(59, buyBest?.score || 40))
+          : Math.min(34, sellBest?.score || 20);
+    return {
+      code: item.code,
+      tip: item.tip,
+      name: quote.name,
+      price: quote.price,
+      changePct: quote.changePct,
+      verdict: gate.verdict,
+      title: gate.title,
+      summary: gate.summary,
+      fitScore,
+      buyLabel: buyBest ? `${buyBest.title} ${buyBest.score}%` : "买点弱",
+      sellLabel: sellBest ? `${sellBest.title} ${sellBest.score}%` : "卖点弱",
+      arrangement: ctx.arrangement,
+    };
   }
 
-  function hideIdxLoading() {
-    document.getElementById("idxLoading").hidden = true;
+  function verdictRank(v) {
+    if (v === "yes") return 0;
+    if (v === "wait") return 1;
+    return 2;
   }
 
-  function showIdxError(msg) {
-    const el = document.getElementById("idxError");
-    el.hidden = false;
-    el.textContent = msg;
-    document.getElementById("idxMAValues").hidden = true;
-    document.getElementById("idxPositionAlert").style.display = "none";
-    hideIdxLoading();
-  }
+  function renderPicksBoard(rows) {
+    const board = document.getElementById("picksBoard");
+    if (!board) return;
+    const sorted = [...rows].sort(
+      (a, b) => verdictRank(a.verdict) - verdictRank(b.verdict) || b.fitScore - a.fitScore
+    );
+    const watch = sorted.filter((r) => r.verdict === "yes" || r.verdict === "wait");
+    const avoid = sorted.filter((r) => r.verdict === "no");
 
-  async function fetchIdxData(code) {
-    const cfg = IDX_CONFIG[code];
-    showIdxLoading(`获取 ${cfg.name} 行情...`);
-    try {
-      const quote = await fetchQuote({ secid: cfg.secid, name: cfg.name });
-      showIdxLoading(`获取 ${cfg.name} K 线...`);
-      const klines = await fetchDayKlines(cfg.symbol);
-      const closes = klines.map((k) => k.close);
-      const ma99 = calcMA(closes, 99);
-      const ma128 = calcMA(closes, 128);
-      const ma225 = calcMA(closes, 225);
-      const data = {
-        name: cfg.name,
-        price: quote.price,
-        changeAmt: quote.change,
-        changePct: quote.changePct,
-        klines,
-        ma99,
-        ma128,
-        ma225,
-        lastMA99: ma99[ma99.length - 1],
-        lastMA128: ma128[ma128.length - 1],
-        lastMA225: ma225[ma225.length - 1],
-      };
-      idxDataCache[code] = data;
-      hideIdxLoading();
-      renderIdxChart(data);
-    } catch (e) {
-      showIdxError(`${cfg.name} 获取失败：${e.message}`);
-    }
-  }
+    const card = (r) => `
+      <button type="button" class="pick-card" data-verdict="${r.verdict}" data-pick-code="${r.code}">
+        <div class="pick-top">
+          <strong>${r.name}</strong>
+          <span>${r.code}</span>
+        </div>
+        <div class="pick-price ${r.changePct >= 0 ? "up" : "down"}">
+          ${r.price.toFixed(2)}
+          <em>${r.changePct >= 0 ? "+" : ""}${r.changePct.toFixed(2)}%</em>
+        </div>
+        <div class="pick-verdict">${r.title}</div>
+        <div class="pick-fit">规则契合 ${r.fitScore}%</div>
+        <p>${r.tip} · ${r.arrangement}</p>
+        <p class="pick-templates">${r.buyLabel} · ${r.sellLabel}</p>
+      </button>
+    `;
 
-  function renderIdxChart(data) {
-    const canvas = document.getElementById("idxChartCanvas");
-    const ctx = canvas.getContext("2d");
-    const W = 900;
-    const H = 480;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    canvas.style.width = "100%";
-    canvas.style.height = "auto";
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    const { klines, ma99, ma128, ma225, price, name, changeAmt, changePct } = data;
-    const displayCount = Math.min(90, klines.length);
-    const sliced = klines.slice(-displayCount);
-    const ma99s = ma99.slice(-displayCount);
-    const ma128s = ma128.slice(-displayCount);
-    const ma225s = ma225.slice(-displayCount);
-
-    let minP = Infinity;
-    let maxP = -Infinity;
-    sliced.forEach((k) => {
-      maxP = Math.max(maxP, k.high);
-      minP = Math.min(minP, k.low);
-    });
-    [ma99s, ma128s, ma225s].forEach((arr) => {
-      arr.forEach((v) => {
-        if (v != null) {
-          maxP = Math.max(maxP, v);
-          minP = Math.min(minP, v);
-        }
+    board.hidden = false;
+    board.innerHTML = `
+      <div class="picks-group">
+        <h3>优先观察（更接近可买 / 可盯）</h3>
+        <div class="picks-grid">${watch.length ? watch.map(card).join("") : "<p class='empty-picks'>当前池子里没有过闸门的标的，现金也是仓位。</p>"}</div>
+      </div>
+      <div class="picks-group">
+        <h3>回避或只处理持仓</h3>
+        <div class="picks-grid">${avoid.length ? avoid.map(card).join("") : "<p class='empty-picks'>暂无硬回避项。</p>"}</div>
+      </div>
+      <p class="picks-footnote">列表按「规则契合」排序，不是胜率排行。点卡片会送进下方问答窗细问。</p>
+    `;
+    board.querySelectorAll("[data-pick-code]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const code = btn.dataset.pickCode;
+        document.getElementById("reviewInput").value = `${code} 现在适合买入或卖出吗？`;
+        document.getElementById("ask")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        runReview();
       });
     });
-
-    const padding = { top: 40, right: 70, bottom: 40, left: 55 };
-    const chartW = W - padding.left - padding.right;
-    const chartH = H - padding.top - padding.bottom;
-    const pad = (maxP - minP) * 0.06;
-    const yMin = minP - pad;
-    const yMax = maxP + pad;
-    const yRange = yMax - yMin || 1;
-    const gap = chartW / displayCount;
-    const candleW = Math.max(2, gap * 0.68);
-    const yPos = (p) => padding.top + chartH - ((p - yMin) / yRange) * chartH;
-
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = "#f7faf8";
-    ctx.fillRect(0, 0, W, H);
-
-    ctx.strokeStyle = "rgba(13,31,26,0.08)";
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 5; i++) {
-      const y = padding.top + (chartH / 5) * i;
-      ctx.beginPath();
-      ctx.moveTo(padding.left, y);
-      ctx.lineTo(W - padding.right, y);
-      ctx.stroke();
-      ctx.fillStyle = "#5a6e66";
-      ctx.font = '11px "Noto Sans SC", sans-serif';
-      ctx.textAlign = "right";
-      ctx.fillText((yMax - (i / 5) * yRange).toFixed(1), padding.left - 8, y + 4);
-    }
-
-    function drawMA(values, color) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      let started = false;
-      for (let i = 0; i < displayCount; i++) {
-        const v = values[i];
-        if (v == null) {
-          started = false;
-          continue;
-        }
-        const x = padding.left + (i + 0.5) * gap;
-        const y = yPos(v);
-        if (!started) {
-          ctx.moveTo(x, y);
-          started = true;
-        } else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-
-    drawMA(ma99s, "#0f7a64");
-    drawMA(ma128s, "#c9952a");
-    drawMA(ma225s, "#c23b2a");
-
-    for (let i = 0; i < displayCount; i++) {
-      const k = sliced[i];
-      const x = padding.left + (i + 0.5) * gap;
-      const up = k.close >= k.open;
-      ctx.strokeStyle = up ? "#c23b2a" : "#1f7a4d";
-      ctx.fillStyle = ctx.strokeStyle;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x, yPos(k.high));
-      ctx.lineTo(x, yPos(k.low));
-      ctx.stroke();
-      const top = yPos(Math.max(k.open, k.close));
-      const bottom = yPos(Math.min(k.open, k.close));
-      ctx.fillRect(x - candleW / 2, top, candleW, Math.max(1, bottom - top));
-    }
-
-    ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = "#0f7a64";
-    ctx.beginPath();
-    ctx.moveTo(padding.left, yPos(price));
-    ctx.lineTo(W - padding.right, yPos(price));
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    ctx.fillStyle = "#0d1f1a";
-    ctx.font = 'bold 14px "Noto Serif SC", serif';
-    ctx.textAlign = "left";
-    ctx.fillText(name, padding.left, 22);
-    ctx.fillStyle = changeAmt >= 0 ? "#c23b2a" : "#1f7a4d";
-    ctx.font = '13px "Noto Sans SC", sans-serif';
-    const changeStr =
-      changeAmt >= 0
-        ? `+${changeAmt.toFixed(2)} (+${changePct.toFixed(2)}%)`
-        : `${changeAmt.toFixed(2)} (${changePct.toFixed(2)}%)`;
-    ctx.fillText(`现价 ${price.toFixed(2)}  ${changeStr}`, padding.left + 90, 22);
-
-    document.getElementById("idxNameDisplay").textContent = data.name;
-    const priceEl = document.getElementById("idxPriceDisplay");
-    priceEl.textContent = price.toFixed(2);
-    priceEl.className = changeAmt >= 0 ? "price-up" : "price-down";
-    document.getElementById("idxMA99Display").textContent = data.lastMA99?.toFixed(2) ?? "N/A";
-    document.getElementById("idxMA128Display").textContent = data.lastMA128?.toFixed(2) ?? "N/A";
-    document.getElementById("idxMA225Display").textContent = data.lastMA225?.toFixed(2) ?? "N/A";
-    document.getElementById("idxMAValues").hidden = false;
-
-    const alert = document.getElementById("idxPositionAlert");
-    let msg = "指数处于均线之间，震荡观察，等待方向选择。";
-    if (data.lastMA225 && price <= data.lastMA225 * 1.02) {
-      msg = "接近 / 触及 MA225 结构底线区域，防守与决战并重，先看是否破位。";
-    } else if (data.lastMA128 && price <= data.lastMA128 * 1.03) {
-      msg = "位于 MA128 变盘点附近，重点观察量能是否配合。";
-    } else if (data.lastMA99 && price <= data.lastMA99 * 1.03) {
-      msg = "位于 MA99 中期分界附近，多空拉锯，不宜追涨杀跌。";
-    } else if (data.lastMA99 && price > data.lastMA99) {
-      msg = "运行于 MA99 上方，中期偏强，关注能否站稳。";
-    }
-    alert.style.display = "block";
-    alert.textContent = msg;
   }
 
-  document.querySelectorAll("#idxTabs [data-idx]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      currentIdx = btn.dataset.idx;
-      document.querySelectorAll("#idxTabs [data-idx]").forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      if (idxDataCache[currentIdx]) renderIdxChart(idxDataCache[currentIdx]);
-      else fetchIdxData(currentIdx);
+  async function runPicksScan() {
+    const loading = document.getElementById("picksLoading");
+    const error = document.getElementById("picksError");
+    const meta = document.getElementById("picksMeta");
+    const board = document.getElementById("picksBoard");
+    if (!loading || !error || !board) return;
+
+    error.hidden = true;
+    loading.hidden = false;
+    board.hidden = true;
+    const rows = [];
+    let done = 0;
+    for (const item of COACH_UNIVERSE) {
+      loading.textContent = `正在扫描 ${item.code}（${++done}/${COACH_UNIVERSE.length}）...`;
+      try {
+        rows.push(await scoreOnePick(item));
+      } catch (e) {
+        rows.push({
+          code: item.code,
+          tip: item.tip,
+          name: item.code,
+          price: 0,
+          changePct: 0,
+          verdict: "no",
+          title: "数据不足",
+          summary: e.message || "跳过",
+          fitScore: 0,
+          buyLabel: "--",
+          sellLabel: "--",
+          arrangement: "数据不足",
+        });
+      }
+    }
+    loading.hidden = true;
+    renderPicksBoard(rows.filter((r) => r.fitScore > 0 || r.price > 0));
+    const yesN = rows.filter((r) => r.verdict === "yes").length;
+    const waitN = rows.filter((r) => r.verdict === "wait").length;
+    if (meta) meta.textContent = `已扫描 ${rows.length} 只 · 可关注 ${yesN} · 等待 ${waitN} · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+  }
+
+  const picksBtn = document.getElementById("picksBtn");
+  if (picksBtn) picksBtn.addEventListener("click", runPicksScan);
+
+  // Index chart only if legacy lab exists
+  const refreshIdx = document.getElementById("refreshIdx");
+  if (refreshIdx && document.getElementById("idxChartCanvas")) {
+    document.querySelectorAll("#idxTabs [data-idx]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        currentIdx = btn.dataset.idx;
+        document.querySelectorAll("#idxTabs [data-idx]").forEach((b) => b.classList.remove("is-active"));
+        btn.classList.add("is-active");
+        if (idxDataCache[currentIdx]) renderIdxChart(idxDataCache[currentIdx]);
+        else fetchIdxData(currentIdx);
+      });
     });
-  });
-
-  document.getElementById("refreshIdx").addEventListener("click", () => {
-    delete idxDataCache[currentIdx];
-    fetchIdxData(currentIdx);
-  });
-
-  setTimeout(() => fetchIdxData("000001"), 400);
+    refreshIdx.addEventListener("click", () => {
+      delete idxDataCache[currentIdx];
+      fetchIdxData(currentIdx);
+    });
+    setTimeout(() => fetchIdxData("000001"), 400);
+  }
 })();
+
