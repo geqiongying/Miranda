@@ -1434,3 +1434,105 @@ tr:last-child td {
   font-size: 0.88rem;
   line-height: 1.6;
 }
+
+/* Dual-entry portal */
+.hero-portal {
+  min-height: 72vh;
+  align-items: center;
+}
+
+.hero-portal .hero-content {
+  max-width: 40rem;
+}
+
+.portal-section {
+  padding-top: 2.5rem;
+}
+
+.portal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(1rem, 3vw, 1.75rem);
+}
+
+.portal-entry {
+  display: grid;
+  gap: 0.75rem;
+  padding: clamp(1.4rem, 3vw, 2rem);
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(165deg, rgba(248, 251, 249, 0.95), rgba(223, 234, 227, 0.55));
+  transition: transform 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+  animation: coachIn 0.55s ease both;
+}
+
+.portal-entry-alt {
+  background:
+    linear-gradient(165deg, rgba(248, 251, 249, 0.92), rgba(201, 149, 42, 0.12));
+  animation-delay: 0.12s;
+}
+
+.portal-entry:hover,
+.portal-entry:focus-visible {
+  transform: translateY(-4px);
+  border-color: rgba(15, 122, 100, 0.35);
+  box-shadow: var(--shadow);
+}
+
+.portal-kicker {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--teal-deep);
+}
+
+.portal-entry h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.55rem, 3vw, 2rem);
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.25;
+}
+
+.portal-entry p {
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+}
+
+.portal-go {
+  margin-top: 0.35rem;
+  color: var(--teal-deep);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.scan-depth {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.scan-depth select {
+  border: 1px solid var(--line);
+  background: var(--white);
+  padding: 0.45rem 0.6rem;
+  color: var(--ink);
+}
+
+.hero-coach .hero-content h1 {
+  max-width: 12ch;
+}
+
+@media (max-width: 720px) {
+  .portal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-portal {
+    min-height: 58vh;
+  }
+}
+
