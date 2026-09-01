@@ -16,9 +16,10 @@
 
   let currentIdx = "000001";
   const idxDataCache = {};
-  const ENGINE = document.body?.dataset?.engine || "all"; // ma | volume | all
+  const ENGINE = document.body?.dataset?.engine || "all"; // ma | volume | wuge | all
   const MA_TEMPLATE_IDS = new Set(["buyA", "buyB", "buyC", "sellA", "sellB"]);
   const VOL_TEMPLATE_IDS = new Set(["buyVol", "buyCtrl", "buyCons", "sellVol"]);
+  const WUGE_TEMPLATE_IDS = new Set(["buyProbe", "buyProbePull", "buyDragon", "sellProbeFail", "sellDragonTop"]);
 
   // ---------- UI helpers ----------
   const nav = document.getElementById("siteNav");
@@ -521,6 +522,7 @@
     const closes = klines.map((k) => k.close);
     const highs = klines.map((k) => k.high);
     const lows = klines.map((k) => k.low);
+    const opens = klines.map((k) => k.open);
     const vols = klines.map((k) => k.volume || 0);
     const last = closes.length - 1;
     const ma5 = calcMA(closes, 5);
@@ -737,6 +739,119 @@
           ctrlPullback,
           heldAboveDivLow:
             maxVolBodyLow != null ? quote.low >= maxVolBodyLow * 0.985 : false,
+        };
+      })(),
+      // --- 五哥笔记 · 试盘线 / 龙头技术近似 ---
+      ...(() => {
+        let probeIdx = -1;
+        let probeBar = null;
+        for (let i = last; i >= Math.max(0, last - 12); i--) {
+          const k = klines[i];
+          const prevV = i > 0 ? vols[i - 1] : 0;
+          const range = k.high - k.low;
+          const body = Math.abs(k.close - k.open);
+          const upper = k.high - Math.max(k.open, k.close);
+          const longUpper = range > 0 && upper / Math.max(k.close, 0.01) >= 0.035 && upper >= body * 0.85;
+          const triple = prevV > 0 && (k.volume || 0) >= prevV * 3;
+          const priorHigh = Math.max(...highs.slice(Math.max(0, i - 20), i), 0);
+          const broke = priorHigh > 0 && k.high >= priorHigh * 0.998;
+          if (longUpper && triple && broke) {
+            probeIdx = i;
+            probeBar = k;
+            break;
+          }
+        }
+        const daysSinceProbe = probeIdx >= 0 ? last - probeIdx : null;
+        const yest = last >= 1 ? klines[last - 1] : null;
+        const yestPrev = last >= 2 ? klines[last - 2] : null;
+        const yestPct =
+          yest && yestPrev && yestPrev.close > 0
+            ? ((yest.close - yestPrev.close) / yestPrev.close) * 100
+            : 0;
+        const yestNotLimit = yestPct < 9.5;
+        const todayRange = quote.high - quote.low;
+        const todayUpper = quote.high - Math.max(quote.open, quote.price);
+        const todayBody = Math.abs(quote.price - quote.open);
+        const todayLongUpper =
+          todayRange > 0 && todayUpper / Math.max(quote.price, 0.01) >= 0.035 && todayUpper >= todayBody * 0.85;
+        const todayTriple = volPrev > 0 && volLast >= volPrev * 3;
+        const todayBrokeHigh = quote.high >= prev20High * 0.998 || quote.high >= prev10High * 0.998;
+        const priceUnder80 = quote.price > 0 && quote.price < 80;
+        const pctInBand = quote.changePct >= 0 && quote.changePct <= 9.8;
+        const probeToday =
+          todayLongUpper && todayTriple && todayBrokeHigh && priceUnder80 && pctInBand && yestNotLimit;
+        const probePullOk =
+          probeBar != null &&
+          daysSinceProbe != null &&
+          daysSinceProbe >= 1 &&
+          daysSinceProbe <= 7 &&
+          volLast > 0 &&
+          volLast <= probeBar.volume * 0.55 &&
+          volLast >= probeBar.volume * 0.25 &&
+          quote.low >= probeBar.low * 0.995;
+        const breakProbeLine = probeBar != null && quote.price > probeBar.high * 0.998;
+        const holdProbeLow = probeBar != null && quote.low >= probeBar.low * 0.995;
+        const probeStopYellow = probeBar != null && quote.price <= probeBar.high * 0.97;
+        const probeStopRed = probeBar != null && quote.price <= probeBar.high * 0.95;
+        const brokeProbeLowHard = probeBar != null && quote.price < probeBar.low * 0.95;
+        const dumpAfterProbe =
+          probeBar != null &&
+          daysSinceProbe != null &&
+          daysSinceProbe >= 1 &&
+          quote.changePct < -2 &&
+          volLast >= volAvg10 * 1.25;
+        const longFlatAfterProbe =
+          probeBar != null && daysSinceProbe != null && daysSinceProbe >= 8 && recentRange / quote.price < 0.06;
+
+        const win5 = klines.slice(-5);
+        const gain5 =
+          win5.length && win5[0].open > 0 ? (quote.price - win5[0].open) / win5[0].open : 0;
+        const sharpBull = win5.filter((k) => {
+          const r = k.high - k.low;
+          const b = Math.abs(k.close - k.open);
+          return r > 0 && b / r >= 0.55 && k.close >= k.open;
+        }).length;
+        const shallowWash = recentRange / quote.price <= 0.09 && quote.changePct >= -3.5;
+        const volExplosion = volAvg10 > 0 && volLast >= volAvg10 * 2;
+        const dragonTech =
+          priceUnder80 && gain5 >= 0.06 && sharpBull >= 2 && (volExplosion || shallowWash);
+
+        const twoYin =
+          last >= 1 &&
+          closes[last] < opens[last] &&
+          closes[last - 1] < klines[last - 1].open &&
+          (klines[last - 1].open - closes[last - 1]) / Math.max(klines[last - 1].open, 0.01) >= 0.03 &&
+          (opens[last] - closes[last]) / Math.max(opens[last], 0.01) >= 0.025;
+        const highLongUpper =
+          quote.price >= prev20High * 0.97 &&
+          todayRange > 0 &&
+          todayUpper / todayRange >= 0.45 &&
+          quote.changePct <= 1.2;
+
+        return {
+          probeToday,
+          probeBar,
+          daysSinceProbe,
+          probePullOk,
+          breakProbeLine,
+          holdProbeLow,
+          probeStopYellow,
+          probeStopRed,
+          brokeProbeLowHard,
+          dumpAfterProbe,
+          longFlatAfterProbe,
+          priceUnder80,
+          pctInBand,
+          yestNotLimit,
+          dragonTech,
+          gain5,
+          sharpBull,
+          shallowWash,
+          volExplosion,
+          twoYin,
+          highLongUpper,
+          probeFail: brokeProbeLowHard || dumpAfterProbe || (longFlatAfterProbe && volLast > volAvg10 * 1.2),
+          dragonTopLike: twoYin || highLongUpper,
         };
       })(),
     };
@@ -1049,12 +1164,76 @@
           { ok: ctx.expandVol || ctx.tripleVol, text: "量能仍活跃，不是无声阴跌" },
         ],
       },
+      {
+        id: "buyProbe",
+        side: "buy",
+        title: "买点试 · 试盘线候选",
+        action: "笔记：非ST、价低于80、涨幅0–9.8%、昨未涨停、量≥昨3倍，且长上影+突破前高。当日只标记候选；真正动手多在缩量回踩后突破试盘线，并带止损。",
+        checks: [
+          { ok: ctx.priceUnder80, text: "股价低于 80（笔记筛选）" },
+          { ok: ctx.pctInBand && ctx.yestNotLimit, text: "涨幅带内且昨日未近似涨停" },
+          { ok: ctx.probeToday || (ctx.daysSinceProbe === 0), text: "近端出现试盘线形态（长上影+3倍量+破前高）" },
+          { ok: ctx.tripleVol || ctx.probeToday, text: "量能达到约 3 倍量级别" },
+          { ok: !ctx.probeFail, text: "未见试盘失败放量破位" },
+        ],
+      },
+      {
+        id: "buyProbePull",
+        side: "buy",
+        title: "买点试回 · 试盘后缩量回踩",
+        action: "试盘后 3–7 日缩量至试盘日约 30%–50%，不破试盘低点；有效突破试盘线偏多。线下 3% 黄牌、5% 红牌。",
+        checks: [
+          { ok: ctx.probeBar != null && ctx.daysSinceProbe >= 1, text: "近端已出现过试盘线" },
+          { ok: ctx.probePullOk || (ctx.holdProbeLow && ctx.shrinkVol), text: "缩量回踩且守住试盘低点" },
+          { ok: ctx.breakProbeLine || ctx.holdProbeLow, text: "站回/突破试盘线或仍守低点待突破" },
+          { ok: !ctx.probeStopRed && !ctx.brokeProbeLowHard, text: "未触发试盘线下方约 5% 红牌" },
+          { ok: ctx.priceUnder80 || price < 100, text: "价格仍处相对低位区" },
+        ],
+      },
+      {
+        id: "buyDragon",
+        side: "buy",
+        title: "买点龙 · 强势凌厉近似",
+        action: "龙头技术近似：近端涨幅凌厉、阳线实体干净、放量或浅洗。题材正统/人气仍需人工确认，不可只靠日线。",
+        checks: [
+          { ok: ctx.dragonTech || (ctx.gain5 >= 0.05 && ctx.sharpBull >= 2), text: "近端涨幅与阳线形态偏凌厉" },
+          { ok: ctx.volExplosion || ctx.expandVol, text: "量能急剧放大或明显放量" },
+          { ok: ctx.shallowWash || ctx.washToday, text: "回撤偏浅 / 点到为止" },
+          { ok: ctx.priceUnder80 || price < 120, text: "更偏小盘低价身世区间" },
+          { ok: !ctx.dragonTopLike && !ctx.twoYin, text: "未见高位走坏/连续大阴" },
+        ],
+      },
+      {
+        id: "sellProbeFail",
+        side: "sell",
+        title: "卖点试败 · 试盘失败",
+        action: "高开后放量砸、破试盘低点，或试盘后久盘再放量下跌：按笔记先认错，红牌离场。",
+        checks: [
+          { ok: ctx.probeBar != null, text: "近期存在试盘线参照" },
+          { ok: ctx.brokeProbeLowHard || ctx.probeStopRed, text: "跌破试盘低点或线下约 5%" },
+          { ok: ctx.dumpAfterProbe || ctx.expandVol, text: "下跌伴随放量/抛压" },
+          { ok: ctx.probeFail || quote.changePct < 0, text: "试盘逻辑转弱" },
+        ],
+      },
+      {
+        id: "sellDragonTop",
+        side: "sell",
+        title: "卖点龙顶 · 高位走坏",
+        action: "笔记见顶预警近似：连续大阴收不回、高位长上影。龙头跌起来也凶，信号出现先减仓。",
+        checks: [
+          { ok: ctx.twoYin || ctx.highLongUpper, text: "连续转弱大阴或高位长上影" },
+          { ok: quote.price >= ctx.prev20High * 0.92 || ctx.gain5 >= 0.12, text: "处于相对高位/大涨之后" },
+          { ok: ctx.fadeFromHigh || quote.changePct <= 0, text: "冲高回落或当日转弱" },
+          { ok: ctx.dragonTopLike || ctx.hugeVolNoRise, text: "顶部预警或巨量滞涨" },
+        ],
+      },
     ];
 
     return templates
       .filter((t) => {
         if (ENGINE === "ma") return MA_TEMPLATE_IDS.has(t.id);
         if (ENGINE === "volume") return VOL_TEMPLATE_IDS.has(t.id);
+        if (ENGINE === "wuge") return WUGE_TEMPLATE_IDS.has(t.id);
         return true;
       })
       .map((t) => {
@@ -1121,6 +1300,59 @@
         verdict: "yes",
         title: buyBest.score >= 80 ? "可小仓试错" : "可分批关注",
         summary: "量能条件相对更好，仍只建议小仓，并与板块情绪交叉验证。",
+        reasons,
+        buyBest,
+        sellBest,
+      };
+    }
+
+    if (ENGINE === "wuge") {
+      const hardNo =
+        (sellBest && sellBest.score >= 70) ||
+        ctx.probeFail ||
+        ctx.brokeProbeLowHard ||
+        (ctx.dragonTopLike && (!buyBest || buyBest.score < 80));
+      if (hardNo) {
+        if (ctx.probeFail || ctx.brokeProbeLowHard) reasons.push("试盘失败/破试盘低点，先按红牌处理。");
+        if (ctx.dragonTopLike) reasons.push("高位走坏预警，不追龙头余波。");
+        if (sellBest && sellBest.score >= 60) reasons.push(`卖点更匹配：${sellBest.title}（${sellBest.score}%）。`);
+        return {
+          verdict: "no",
+          title: "不建议买入",
+          summary: "五哥规则偏防守：止损永远比天大，先观望或处理已有仓。",
+          reasons,
+          buyBest,
+          sellBest,
+        };
+      }
+      const waitLike =
+        !buyBest ||
+        buyBest.score < 60 ||
+        (sellBest && sellBest.score >= buyBest.score) ||
+        (buyBest.id === "buyProbe" && buyBest.score < 80) ||
+        (buyBest.id === "buyDragon" && buyBest.score < 80);
+      if (waitLike) {
+        if (!buyBest || buyBest.score < 60) reasons.push("试盘/龙头买点模板未齐。");
+        if (buyBest?.id === "buyProbe") reasons.push("试盘线当日多是标记候选，优先等缩量回踩再突破。");
+        if (buyBest?.id === "buyDragon") reasons.push("龙头还要人工确认题材与人气，日线只是近似。");
+        if (sellBest && buyBest && sellBest.score >= buyBest.score) reasons.push("卖点契合不低于买点，先等。");
+        return {
+          verdict: "wait",
+          title: "暂不建议买入",
+          summary: "可以盯试盘后缩量回踩或龙头确认，竞价/盘口仍需人工看。",
+          reasons,
+          buyBest,
+          sellBest,
+        };
+      }
+      reasons.push(`五哥买点更贴近：${buyBest.title}（${buyBest.score}%）。`);
+      if (buyBest.id === "buyProbePull") reasons.push("突破试盘线才偏多；线下约3%黄牌、约5%红牌。");
+      if (buyBest.id === "buyDragon") reasons.push("技术凌厉≠题材龙头，交叉验证热点。");
+      reasons.push("集合竞价与筹码峰细节本站未自动覆盖。");
+      return {
+        verdict: "yes",
+        title: buyBest.score >= 80 ? "可小仓试错" : "可分批关注",
+        summary: "五哥条件相对更好，仍只建议小仓，并严格执行止损。",
         reasons,
         buyBest,
         sellBest,
@@ -1432,8 +1664,15 @@
 
   function highlightTemplateCards(ranked) {
     const hotId = (ranked.find((t) => t.score >= 60) || ranked[0] || {}).id;
+    const map =
+      ENGINE === "volume"
+        ? ["buyVol", "buyCtrl", "buyCons", "sellVol"]
+        : ENGINE === "wuge"
+          ? ["buyProbe", "buyProbePull", "buyDragon", "sellProbeFail", "sellDragonTop"]
+          : ENGINE === "ma"
+            ? ["buyA", "buyB", "buyC", "sellA", "sellB"]
+            : ["buyA", "buyB", "buyC", "buyVol", "buyCtrl", "buyCons", "sellA", "sellB", "sellVol"];
     document.querySelectorAll(".template-card").forEach((card, idx) => {
-      const map = ["buyA", "buyB", "buyC", "buyVol", "buyCtrl", "buyCons", "sellA", "sellB", "sellVol"];
       const id = card.dataset.id || map[idx];
       card.classList.toggle("is-hot", id === hotId);
     });
@@ -1664,6 +1903,29 @@
 
   function coarseMarketScore(row, closed) {
     const code = row.code;
+    if (ENGINE === "wuge") {
+      const price = numOr0(row.f2);
+      const pct = numOr0(row.f3);
+      const vr = numOr0(row.f10);
+      const mcap = numOr0(row.f20);
+      let s = 6;
+      if (closed) {
+        if (mcap >= 2e9 && mcap <= 4e10) s += 36;
+        else if (mcap > 0) s += 14;
+        s += parseInt(code.slice(-3), 10) % 17;
+        return s;
+      }
+      if (price > 0 && price < 80) s += 28;
+      else if (price > 0 && price < 120) s += 10;
+      else return 0;
+      if (pct >= 0 && pct <= 9.8) s += 18;
+      else return 0;
+      if (vr >= 2.8) s += 26;
+      else if (vr >= 2) s += 14;
+      else if (vr >= 1.5) s += 6;
+      if (mcap > 0 && mcap < 5e10) s += 8;
+      return s;
+    }
     if (closed) {
       const mcap = numOr0(row.f20);
       let s = 8;
@@ -1877,7 +2139,7 @@
   }
 
   async function runPicksScan() {
-    if (ENGINE !== "volume") return;
+    if (ENGINE !== "volume" && ENGINE !== "wuge") return;
     const loading = document.getElementById("picksLoading");
     const error = document.getElementById("picksError");
     const meta = document.getElementById("picksMeta");
@@ -1886,6 +2148,7 @@
     if (!loading || !error || !board) return;
 
     const depth = Math.max(20, Math.min(120, Number(depthEl?.value) || 60));
+    const engineLabel = ENGINE === "wuge" ? "五哥试盘/龙头" : "量能";
     error.hidden = true;
     loading.hidden = false;
     board.hidden = true;
@@ -1902,10 +2165,21 @@
         return;
       }
 
-      const candidates = pickScanCandidates(uni.list, depth, uni.closed);
+      let pool = uni.list;
+      if (ENGINE === "wuge" && !uni.closed) {
+        pool = pool.filter((r) => {
+          const price = numOr0(r.f2);
+          const pct = numOr0(r.f3);
+          if (price > 0 && price >= 80) return false;
+          if (pct < 0 || pct > 9.8) return false;
+          return true;
+        });
+      }
+
+      const candidates = pickScanCandidates(pool, depth, uni.closed);
       loading.textContent =
-        `池 ${uni.list.length} 只（接口 ${uni.totalReported}）→ 精评 Top ${candidates.length}` +
-        (uni.closed ? " · 休市按市值分层粗筛" : " · 按量价粗筛");
+        `池 ${pool.length} 只（接口 ${uni.totalReported}）→ 精评 Top ${candidates.length}` +
+        (uni.closed ? " · 休市分层粗筛" : ENGINE === "wuge" ? " · 试盘筛选粗筛" : " · 按量价粗筛");
 
       let done = 0;
       const deep = await mapPool(candidates, 5, async ({ row, coarse }) => {
@@ -1915,11 +2189,11 @@
             { fast: true }
           );
           done += 1;
-          loading.textContent = `精评量能模板 ${done}/${candidates.length}…`;
+          loading.textContent = `精评${engineLabel}模板 ${done}/${candidates.length}…`;
           return scored;
         } catch (_) {
           done += 1;
-          loading.textContent = `精评量能模板 ${done}/${candidates.length}…`;
+          loading.textContent = `精评${engineLabel}模板 ${done}/${candidates.length}…`;
           return null;
         }
       });
@@ -1930,10 +2204,10 @@
       loading.hidden = true;
       renderPicksBoard(
         rows,
-        `全市场扫描 · 池 ${uni.list.length} · 精评 ${candidates.length} · 可关注 ${yesN} · 等待 ${waitN} · 契合度≠胜率`
+        `全市场扫描 · ${engineLabel} · 池 ${pool.length} · 精评 ${candidates.length} · 可关注 ${yesN} · 等待 ${waitN} · 契合度≠胜率`
       );
       if (meta) {
-        meta.textContent = `池 ${uni.list.length} · 精评 ${candidates.length} · 可关注 ${yesN} · 等待 ${waitN} · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+        meta.textContent = `池 ${pool.length} · 精评 ${candidates.length} · 可关注 ${yesN} · 等待 ${waitN} · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
       }
     } catch (err) {
       loading.hidden = true;
