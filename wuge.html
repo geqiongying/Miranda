@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MIRANDA · 量能操盘台</title>
-  <meta name="description" content="Miranda 量能操盘台：全市场扫描沪深主板、创业板、科创板，按录像量能规则推荐并问答买卖。" />
+  <title>MIRANDA · 五哥笔记台</title>
+  <meta name="description" content="Miranda 五哥笔记台：按教学笔记试盘线与龙头技术规则，全市场粗筛精评并问答买卖。" />
   <meta name="author" content="Miranda Ge" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./css/styles.css" />
 </head>
-<body data-engine="volume">
+<body data-engine="wuge">
   <nav class="site-nav" id="siteNav">
     <a class="brand-mark" href="./index.html">MIRANDA</a>
     <ul class="nav-links">
@@ -19,8 +19,7 @@
       <li><a href="#picks">全市场选股</a></li>
       <li><a href="#ask">问答</a></li>
       <li><a href="#rules">规则</a></li>
-      <li><a href="./ma.html">均线手记</a></li>
-      <li><a href="./wuge.html">五哥台</a></li>
+      <li><a href="./coach.html">量能台</a></li>
     </ul>
   </nav>
 
@@ -34,8 +33,8 @@
     </div>
     <div class="hero-content">
       <div class="hero-brand">MIRANDA</div>
-      <h1>量能操盘台</h1>
-      <p>只跑录像量能逻辑。扫描沪深主板 + 创业板 + 科创板，粗筛后再精评推荐。</p>
+      <h1>五哥笔记台</h1>
+      <p>只跑教学笔记里的试盘线 / 龙头技术近似。与均线、量能引擎互不混用。</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="#picks">全市场扫描</a>
         <a class="btn btn-ghost" href="#ask">买卖问答</a>
@@ -46,15 +45,15 @@
   <main>
     <section class="section reveal honesty-strip" id="honesty">
       <div class="wrap">
-        <p><strong>独立引擎：</strong>本页只用买点 V / Ctl / H 与卖点 V，不混入均线 A/B/C。全市场先粗筛再精评，不是只看你问过的票。契合度 ≠ 胜率。</p>
+        <p><strong>独立引擎：</strong>本页只用试盘线、试盘回踩、龙头技术近似与对应卖点，不混入均线 A/B/C 或量能 V/Ctl/H。竞价换手、盘口托压、完整筹码峰需人工看盘。契合度 ≠ 胜率。止损永远比天大。</p>
       </div>
     </section>
 
     <section class="section reveal" id="picks">
       <div class="wrap">
         <div class="section-label">01 / Full Scan</div>
-        <h2>全市场量能扫描</h2>
-        <p class="section-lead">覆盖沪市主板、深市主板、创业板、科创板。先用行情列表粗筛（排除 ST、异常涨跌停边缘等），再对候选做量能模板精评。</p>
+        <h2>全市场试盘扫描</h2>
+        <p class="section-lead">覆盖沪深主板、创业板、科创板。粗筛贴近笔记：非 ST、价偏低、涨幅带、量比活跃，再精评试盘 / 龙头模板。</p>
 
         <div class="tool-panel coach-panel">
           <div class="coach-toolbar">
@@ -79,8 +78,8 @@
     <section class="section reveal" id="ask">
       <div class="wrap">
         <div class="section-label">02 / Ask</div>
-        <h2>量能买卖问答</h2>
-        <p class="section-lead">只按量能剧本回答适不适合买/卖，不调用均线 A/B/C。</p>
+        <h2>五哥买卖问答</h2>
+        <p class="section-lead">只按试盘线 / 龙头近似回答适不适合买/卖，不调用另外两套引擎。</p>
 
         <div class="tool-panel coach-panel">
           <div class="hold-status" id="holdStatus" role="radiogroup" aria-label="当前持仓情况">
@@ -93,11 +92,11 @@
           <div class="coach-chat" id="coachChat">
             <div class="coach-messages" id="coachMessages">
               <div class="coach-bubble bot">
-                量能引擎已就绪。可问「688981 适合买吗」，或先跑全市场扫描再点卡片细问。
+                五哥引擎已就绪。可问「300xxx 有没有试盘线」，或先跑全市场扫描再点卡片细问。
               </div>
             </div>
             <form class="coach-compose" id="coachForm">
-              <input id="reviewInput" type="text" placeholder="例如：300308 现在适合买入吗？" autocomplete="off" required />
+              <input id="reviewInput" type="text" placeholder="例如：002xxx 现在适合按试盘线买吗？" autocomplete="off" required />
               <button class="btn btn-primary" id="reviewBtn" type="submit">提问</button>
             </form>
           </div>
@@ -109,7 +108,7 @@
             </div>
             <div class="history-list" id="reviewHistoryList"></div>
           </div>
-          <div class="status-box" id="reviewLoading" hidden>正在对照量能规则...</div>
+          <div class="status-box" id="reviewLoading" hidden>正在对照五哥规则...</div>
           <div class="error-box" id="reviewError" hidden></div>
           <div class="result-box" id="reviewResult" hidden></div>
         </div>
@@ -118,29 +117,34 @@
 
     <section class="section reveal" id="rules">
       <div class="wrap">
-        <div class="section-label">03 / Volume Rules</div>
-        <h2>量能规则速览</h2>
-        <p class="section-lead">完整笔记：<a href="./notes/laoyan-volume-rules.md" style="color:var(--teal-deep);text-decoration:underline;">laoyan-volume-rules.md</a> · 复核：<a href="./notes/laoyan-audit.md" style="color:var(--teal-deep);text-decoration:underline;">audit</a></p>
+        <div class="section-label">03 / Wuge Rules</div>
+        <h2>规则速览</h2>
+        <p class="section-lead">摘要：<a href="./notes/wuge-rules.md" style="color:var(--teal-deep);text-decoration:underline;">wuge-rules.md</a> · PDF：<a href="./notes/教学笔记-五哥_compressed_4mb.pdf" style="color:var(--teal-deep);text-decoration:underline;">压缩版</a> / <a href="./教学笔记-五哥.pdf" style="color:var(--teal-deep);text-decoration:underline;">完整版</a></p>
         <div class="template-grid" id="templateLibrary">
-          <article class="template-card" data-side="buy" data-id="buyVol">
-            <div class="template-tag">买点 V</div>
-            <h3>爆量后缩量回踩</h3>
-            <p>近端启动量 → 缩半/地量 → 回踩成本区；弱建还要放量突破。</p>
+          <article class="template-card" data-side="buy" data-id="buyProbe">
+            <div class="template-tag">买点试</div>
+            <h3>试盘线候选</h3>
+            <p>价低于80、涨幅带、3倍量、长上影破前高；当日多标记，慎追。</p>
           </article>
-          <article class="template-card" data-side="buy" data-id="buyCtrl">
-            <div class="template-tag">买点 Ctl</div>
-            <h3>强控盘缩量回踩</h3>
-            <p>拉升量偏小 + 实体新高 + 缩量回踩。</p>
+          <article class="template-card" data-side="buy" data-id="buyProbePull">
+            <div class="template-tag">买点试回</div>
+            <h3>试盘后缩量回踩</h3>
+            <p>3–7 日缩半量、守低点，突破试盘线；3%/5% 止损纪律。</p>
           </article>
-          <article class="template-card" data-side="buy" data-id="buyCons">
-            <div class="template-tag">买点 H</div>
-            <h3>横盘起爆观察</h3>
-            <p>涨放回调缩，MA20 附近长下影测试。</p>
+          <article class="template-card" data-side="buy" data-id="buyDragon">
+            <div class="template-tag">买点龙</div>
+            <h3>强势凌厉近似</h3>
+            <p>阳线干净、放量、浅洗；题材人气仍要人工确认。</p>
           </article>
-          <article class="template-card" data-side="sell" data-id="sellVol">
-            <div class="template-tag">卖点 V</div>
-            <h3>放量滞涨/破位</h3>
-            <p>放量不涨先走；跌破最大量成本底则失效。</p>
+          <article class="template-card" data-side="sell" data-id="sellProbeFail">
+            <div class="template-tag">卖点试败</div>
+            <h3>试盘失败</h3>
+            <p>破试盘低点 / 放量砸盘 → 红牌离场。</p>
+          </article>
+          <article class="template-card" data-side="sell" data-id="sellDragonTop">
+            <div class="template-tag">卖点龙顶</div>
+            <h3>高位走坏</h3>
+            <p>连续大阴、高位长上影等见顶预警近似。</p>
           </article>
         </div>
       </div>
@@ -150,7 +154,7 @@
   <footer class="site-footer">
     <div class="wrap">
       <div class="brand-mark">MIRANDA</div>
-      <p>量能操盘台 · 独立引擎 · <a href="./ma.html" style="text-decoration:underline;">切换均线手记</a></p>
+      <p>五哥笔记台 · 独立引擎 · <a href="./index.html" style="text-decoration:underline;">回首页三入口</a></p>
       <p class="disclaimer">仅供学习参考，不构成投资建议。不承诺任何成功率。</p>
     </div>
   </footer>

@@ -1455,6 +1455,10 @@ tr:last-child td {
   gap: clamp(1rem, 3vw, 1.75rem);
 }
 
+.portal-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .portal-entry {
   display: grid;
   gap: 0.75rem;
@@ -1470,6 +1474,12 @@ tr:last-child td {
   background:
     linear-gradient(165deg, rgba(248, 251, 249, 0.92), rgba(201, 149, 42, 0.12));
   animation-delay: 0.12s;
+}
+
+.portal-entry-wuge {
+  background:
+    linear-gradient(165deg, rgba(248, 251, 249, 0.94), rgba(15, 122, 100, 0.14));
+  animation-delay: 0.22s;
 }
 
 .portal-entry:hover,
@@ -1527,12 +1537,19 @@ tr:last-child td {
 }
 
 @media (max-width: 720px) {
-  .portal-grid {
+  .portal-grid,
+  .portal-grid-3 {
     grid-template-columns: 1fr;
   }
 
   .hero-portal {
     min-height: 58vh;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 980px) {
+  .portal-grid-3 {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
