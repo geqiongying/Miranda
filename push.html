@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MIRANDA · 微信推送</title>
-  <meta name="description" content="Miranda 私人收盘推送：工作日通过 PushPlus 把监控列表状态发到微信。" />
+  <meta name="description" content="Miranda 私人微信推送：收盘盯盘提醒 + 每日观察菜单。" />
   <meta name="author" content="Miranda Ge" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,8 +30,8 @@
     <div class="wrap">
       <div class="section-label">MIRANDA ALERT</div>
       <p class="guide-kicker">菜单推送</p>
-      <h1>微信收盘推送</h1>
-      <p class="guide-lead">工作日北京时间 15:10，把默认监控列表的观察结果发到微信。这不是自动交易，只是提醒你打开券商软件核对。</p>
+      <h1>微信推送</h1>
+      <p class="guide-lead">两条线分开发：收盘盯自选股，早盘发每日观察菜单。都不是自动交易，只是提醒你打开券商软件核对。</p>
     </div>
   </header>
 
@@ -85,17 +85,27 @@
 
     <section class="section">
       <div class="wrap push-page">
-        <div class="section-label">03 / Setup</div>
-        <h2>要真正发到微信，还差一步</h2>
-        <p class="section-lead">推送 token 不能写在公开网页里。把这个 PR 合并进 <code>main</code> 之后，再到 GitHub 仓库加上密钥。</p>
+        <div class="section-label">03 / Daily menu</div>
+        <h2>每日观察菜单</h2>
+        <p class="section-lead">这是第二条推送。工作日北京时间 <strong>08:20</strong> 从沪深主板 / 创业板 / 科创板里筛一份短线 5 只、中线 5 只的观察名单。它不是量能台或五哥台的教学买点，只是第一层观察菜单。</p>
+        <div class="callout quote">
+          合并后到 Actions 里手动运行一次 <strong>Daily menu alert</strong>，微信就会马上收到今天的菜单。之后每个工作日早上自动再发。
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap push-page">
+        <div class="section-label">04 / Setup</div>
+        <h2>密钥已经配好</h2>
+        <p class="section-lead"><code>PUSHPLUS_TOKEN</code> 已经在仓库里。收盘提醒用 <strong>Stock close alert</strong>；每日菜单用 <strong>Daily menu alert</strong>。两条都可以在 Actions 里手动试发。</p>
         <ol class="push-steps">
-          <li>打开 PushPlus，复制你的 token。</li>
-          <li>打开 Miranda 仓库 → Settings → Secrets and variables → Actions。</li>
-          <li>新增 Repository secret，名称填 <code>PUSHPLUS_TOKEN</code>，值填 token。</li>
-          <li>到 Actions 里手动运行一次 <strong>Stock close alert</strong>，确认微信能收到。</li>
+          <li>打开 Actions：<code>Daily menu alert</code>。</li>
+          <li>点 <strong>Run workflow</strong>，分支选 <code>main</code>。</li>
+          <li>微信里应收到「Miranda 每日观察菜单」。</li>
         </ol>
         <div class="callout">
-          没有 token 时，定时任务会失败而不是悄悄空跑。合并本页后如果还没配密钥，GitHub Actions 会明确报错。
+          没有 token 时任务会明确失败，而不是悄悄空跑。
         </div>
         <p class="muted-note">提醒只按规则发出观察信号，不构成投资建议。公开行情可能延迟，买卖前仍要打开券商软件核对。</p>
       </div>
@@ -105,7 +115,7 @@
   <footer class="site-footer">
     <div class="wrap">
       <div class="brand-mark">MIRANDA</div>
-      <p>私人学习站 · 微信收盘推送。</p>
+      <p>私人学习站 · 微信收盘盯盘 + 每日观察菜单。</p>
     </div>
   </footer>
   <script src="./js/nav.js"></script>
