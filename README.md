@@ -28,7 +28,7 @@ Miranda 的私人 A 股学习站：**均线手记**、**量能操盘台**、**�
 
 `dinner_menu_push.py` 每天按日期选择一套四人份家常晚饭菜单，并通过 PushPlus 推送到微信。默认菜单包含 3 道菜、1 个汤、做饭顺序和买菜清单。
 
-GitHub Actions 默认在 **北京时间每天 16:30** 运行 `Dinner menu push`。
+GitHub Actions 默认在 **北京时间每天 11:00** 运行 `Dinner menu push`。
 
 本地预览今天菜单：
 

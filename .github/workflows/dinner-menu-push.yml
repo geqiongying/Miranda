@@ -2,8 +2,8 @@ name: Dinner menu push
 
 on:
   schedule:
-    # 16:30 China Standard Time every day.
-    - cron: "30 8 * * *"
+    # 11:00 China Standard Time every day.
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 jobs:
