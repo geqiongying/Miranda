@@ -14,7 +14,7 @@ Miranda 的私人 A 股学习站：**均线手记**、**量能操盘台**、**�
 | 均线手记 | `ma.html` | 买点 A/B/C、卖点 A/B；`data-engine="ma"` |
 | 量能操盘台 | `coach.html` | 买点 V/Ctl/H、卖点 V；`data-engine="volume"` |
 | 五哥笔记台 | `wuge.html` | 试盘线 / 龙头近似；`data-engine="wuge"` |
-| 微信推送 | `push.html` | 工作日 15:10 通过 PushPlus 发到微信 |
+| 微信推送 | `push.html` | 收盘提醒和晚饭菜单通过 PushPlus 发到微信 |
 
 ## 微信收盘推送
 
@@ -23,6 +23,26 @@ Miranda 的私人 A 股学习站：**均线手记**、**量能操盘台**、**�
 要真正发到微信，先把本仓库 Actions secret `PUSHPLUS_TOKEN` 配好，再到 Actions 里手动跑一次 `Stock close alert`。说明页：`push.html`。
 
 脚本只做观察提醒，不构成投资建议。
+
+## 每日晚饭菜单推送
+
+`dinner_menu_push.py` 每天按日期选择一套四人份家常晚饭菜单，并通过 PushPlus 推送到微信。默认菜单包含 3 道菜、1 个汤、做饭顺序和买菜清单。
+
+GitHub Actions 默认在 **北京时间每天 16:30** 运行 `Dinner menu push`。
+
+本地预览今天菜单：
+
+```bash
+python3 dinner_menu_push.py --dry-run
+```
+
+指定日期或人数：
+
+```bash
+python3 dinner_menu_push.py --date 2026-09-06 --servings 4 --dry-run
+```
+
+要真正发到微信，复用仓库 Actions secret `PUSHPLUS_TOKEN`。如果要推送到 PushPlus 群组，可额外配置 `PUSHPLUS_TOPIC`。
 
 ## 五哥笔记来源
 

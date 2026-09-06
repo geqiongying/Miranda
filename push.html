@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MIRANDA · 微信推送</title>
-  <meta name="description" content="Miranda 私人收盘推送：工作日通过 PushPlus 把监控列表状态发到微信。" />
+  <meta name="description" content="Miranda 私人推送中心：通过 PushPlus 把收盘提醒和每日晚饭菜单发到微信。" />
   <meta name="author" content="Miranda Ge" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -29,9 +29,9 @@
   <header class="guide-hero" id="top">
     <div class="wrap">
       <div class="section-label">MIRANDA ALERT</div>
-      <p class="guide-kicker">菜单推送</p>
-      <h1>微信收盘推送</h1>
-      <p class="guide-lead">工作日北京时间 15:10，把默认监控列表的观察结果发到微信。这不是自动交易，只是提醒你打开券商软件核对。</p>
+      <p class="guide-kicker">PushPlus</p>
+      <h1>微信推送中心</h1>
+      <p class="guide-lead">通过 PushPlus 把收盘观察和每日晚饭菜单发到微信。一个负责提醒你复盘，一个负责解决晚饭吃什么。</p>
     </div>
   </header>
 
@@ -40,9 +40,9 @@
       <div class="wrap push-page">
         <div class="section-label">01 / Why missing</div>
         <h2>为什么你会觉得推送不见了</h2>
-        <p class="section-lead">之前做过 PushPlus 收盘提醒，但那份草稿一直没有合进正式站点。后来网站改成三入口学习站时，手机顶栏菜单也被直接藏掉了，所以「菜单」和「推送」看起来一起消失了。</p>
+        <p class="section-lead">PushPlus token 不能写在公开网页里，所以所有真实推送都放在 GitHub Actions 里运行。网页只保留说明和入口，具体发送由脚本完成。</p>
         <div class="callout quote">
-          这次已经把两件事一起补回来：手机可以重新打开菜单；推送页重新出现在导航里；收盘提醒脚本也回到仓库。
+          当前包含两类推送：工作日收盘提醒、每天晚饭四人家常菜推荐。
         </div>
       </div>
     </section>
@@ -50,7 +50,7 @@
     <section class="section">
       <div class="wrap push-page">
         <div class="section-label">02 / Watchlist</div>
-        <h2>默认监控</h2>
+        <h2>股票收盘推送</h2>
         <p class="section-lead">每天收盘后检查这些票。有买入观察信号会标明；没有信号也会发当日状态，方便确认推送还活着。</p>
         <div class="table-wrap">
           <table class="push-table">
@@ -85,19 +85,59 @@
 
     <section class="section">
       <div class="wrap push-page">
-        <div class="section-label">03 / Setup</div>
+        <div class="section-label">03 / Dinner</div>
+        <h2>每日晚饭菜单推送</h2>
+        <p class="section-lead">每天北京时间 16:30 自动推送一套四人份家常晚饭菜单，包含 3 道菜、1 个汤、做饭顺序和买菜清单。</p>
+        <div class="table-wrap">
+          <table class="push-table">
+            <thead>
+              <tr>
+                <th>项目</th>
+                <th>说明</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>脚本</td>
+                <td><code>dinner_menu_push.py</code></td>
+              </tr>
+              <tr>
+                <td>工作流</td>
+                <td><code>Dinner menu push</code></td>
+              </tr>
+              <tr>
+                <td>时间</td>
+                <td>每天北京时间 16:30</td>
+              </tr>
+              <tr>
+                <td>本地预览</td>
+                <td><code>python3 dinner_menu_push.py --dry-run</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          菜单是家常快捷路线，默认按四人份设计；如果家里临时多一个人，可以本地运行时加 <code>--servings 5</code> 预览。
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap push-page">
+        <div class="section-label">04 / Setup</div>
         <h2>要真正发到微信，还差一步</h2>
-        <p class="section-lead">推送 token 不能写在公开网页里。把这个 PR 合并进 <code>main</code> 之后，再到 GitHub 仓库加上密钥。</p>
+        <p class="section-lead">把这个 PR 合并进 <code>main</code> 之后，到 GitHub 仓库加上 PushPlus 密钥。收盘提醒和晚饭菜单会复用同一个 token。</p>
         <ol class="push-steps">
           <li>打开 PushPlus，复制你的 token。</li>
           <li>打开 Miranda 仓库 → Settings → Secrets and variables → Actions。</li>
           <li>新增 Repository secret，名称填 <code>PUSHPLUS_TOKEN</code>，值填 token。</li>
-          <li>到 Actions 里手动运行一次 <strong>Stock close alert</strong>，确认微信能收到。</li>
+          <li>如果要发到 PushPlus 群组，可再新增 <code>PUSHPLUS_TOPIC</code>。</li>
+          <li>到 Actions 里手动运行一次 <strong>Dinner menu push</strong>，确认微信能收到。</li>
         </ol>
         <div class="callout">
-          没有 token 时，定时任务会失败而不是悄悄空跑。合并本页后如果还没配密钥，GitHub Actions 会明确报错。
+          没有 token 时，定时任务会失败而不是悄悄空跑，GitHub Actions 会明确报错。
         </div>
-        <p class="muted-note">提醒只按规则发出观察信号，不构成投资建议。公开行情可能延迟，买卖前仍要打开券商软件核对。</p>
+        <p class="muted-note">股票提醒只按规则发出观察信号，不构成投资建议。晚饭菜单仅作家常备餐参考，可按家人口味替换食材。</p>
       </div>
     </section>
   </main>
@@ -105,7 +145,7 @@
   <footer class="site-footer">
     <div class="wrap">
       <div class="brand-mark">MIRANDA</div>
-      <p>私人学习站 · 微信收盘推送。</p>
+      <p>私人学习站 · 微信推送中心。</p>
     </div>
   </footer>
   <script src="./js/nav.js"></script>
