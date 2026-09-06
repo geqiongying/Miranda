@@ -38,20 +38,9 @@
   <main>
     <section class="section">
       <div class="wrap push-page">
-        <div class="section-label">01 / Why missing</div>
-        <h2>为什么你会觉得推送不见了</h2>
-        <p class="section-lead">之前做过 PushPlus 收盘提醒，但那份草稿一直没有合进正式站点。后来网站改成三入口学习站时，手机顶栏菜单也被直接藏掉了，所以「菜单」和「推送」看起来一起消失了。</p>
-        <div class="callout quote">
-          这次已经把两件事一起补回来：手机可以重新打开菜单；推送页重新出现在导航里；收盘提醒脚本也回到仓库。
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="wrap push-page">
-        <div class="section-label">02 / Watchlist</div>
-        <h2>默认监控</h2>
-        <p class="section-lead">每天收盘后检查这些票。有买入观察信号会标明；没有信号也会发当日状态，方便确认推送还活着。</p>
+        <div class="section-label">01 / Current</div>
+        <h2>现在只推国投中鲁</h2>
+        <p class="section-lead">飞龙股份、*ST大立 已经从每日推送里拿掉。工作日 15:10 默认只检查 <strong>国投中鲁 600962</strong>。要加别的票，改仓库里的 <code>watchlist.json</code> 即可。</p>
         <div class="table-wrap">
           <table class="push-table">
             <thead>
@@ -65,17 +54,7 @@
               <tr>
                 <td>国投中鲁</td>
                 <td>600962</td>
-                <td>价在 MA20 上方，MA20 走平或向上，且价在 MA60 上方</td>
-              </tr>
-              <tr>
-                <td>飞龙股份</td>
-                <td>002536</td>
-                <td>同上，普通买入观察</td>
-              </tr>
-              <tr>
-                <td>*ST大立</td>
-                <td>002214</td>
-                <td>持仓风险线：14.60 / 13.30 / 15.10–15.30 / 16.50</td>
+                <td>买入观察：价在 MA20 上方，MA20 走平或向上，且价在 MA60 上方</td>
               </tr>
             </tbody>
           </table>
@@ -85,17 +64,39 @@
 
     <section class="section">
       <div class="wrap push-page">
-        <div class="section-label">03 / Setup</div>
-        <h2>要真正发到微信，还差一步</h2>
-        <p class="section-lead">推送 token 不能写在公开网页里。把这个 PR 合并进 <code>main</code> 之后，再到 GitHub 仓库加上密钥。</p>
-        <ol class="push-steps">
-          <li>打开 PushPlus，复制你的 token。</li>
-          <li>打开 Miranda 仓库 → Settings → Secrets and variables → Actions。</li>
-          <li>新增 Repository secret，名称填 <code>PUSHPLUS_TOKEN</code>，值填 token。</li>
-          <li>到 Actions 里手动运行一次 <strong>Stock close alert</strong>，确认微信能收到。</li>
-        </ol>
+        <div class="section-label">02 / Old rules</div>
+        <h2>你之前设过的规则</h2>
+        <p class="section-lead">这是当初写进脚本的两套规则。国投中鲁现在仍用第一套；后两只已经不再推送，规则只作为记录保留。</p>
+        <div class="table-wrap">
+          <table class="push-table">
+            <thead>
+              <tr>
+                <th>对象</th>
+                <th>当时的规则</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>国投中鲁、飞龙股份</td>
+                <td>同时满足三件事才算买入观察：最新价站上 20 日线；20 日线走平或向上；最新价站上 60 日线。</td>
+              </tr>
+              <tr>
+                <td>*ST大立 002214</td>
+                <td>不是买点规则，是持仓价位提醒：跌破 14.60 考虑减仓；跌破 13.30 考虑处理剩余仓位；反弹到 15.10–15.30 若站不稳考虑减仓；站上 16.50 复核是否继续持有。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap push-page">
+        <div class="section-label">03 / Add stocks</div>
+        <h2>想推其他股票</h2>
+        <p class="section-lead">打开 <code>watchlist.json</code>，在 <code>stocks</code> 里追加一行。合并进 <code>main</code> 后，下一次收盘推送就会带上新票。也可以到 Actions 里手动跑一次 <strong>Stock close alert</strong> 立刻试发。</p>
         <div class="callout">
-          没有 token 时，定时任务会失败而不是悄悄空跑。合并本页后如果还没配密钥，GitHub Actions 会明确报错。
+          例如再看贵州茅台，就加：<code>{"code": "600519", "alias": "贵州茅台", "mode": "buy"}</code>。普通观察票都用 <code>buy</code>。
         </div>
         <p class="muted-note">提醒只按规则发出观察信号，不构成投资建议。公开行情可能延迟，买卖前仍要打开券商软件核对。</p>
       </div>
