@@ -1,0 +1,35 @@
+name: Daily menu alert
+
+on:
+  schedule:
+    # 08:20 China Standard Time on weekdays, before the open.
+    - cron: "20 0 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  pushplus-menu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Require PushPlus token
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+        run: |
+          if [ -z "$PUSHPLUS_TOKEN" ]; then
+            echo "::error::仓库还没有配置 PUSHPLUS_TOKEN。请到 Settings → Secrets and variables → Actions 确认这个密钥。"
+            exit 1
+          fi
+
+      - name: Send daily observation menu
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+        run: python3 daily_menu_alert.py
