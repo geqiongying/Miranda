@@ -74,6 +74,41 @@ input {
   transition: border-color 0.3s ease, background 0.3s ease;
 }
 
+.nav-toggle {
+  display: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.32rem;
+  border: 1px solid var(--line);
+  background: rgba(248, 251, 249, 0.88);
+  border-radius: var(--radius);
+  cursor: pointer;
+  z-index: 41;
+}
+
+.nav-toggle span {
+  display: block;
+  width: 1.05rem;
+  height: 1.5px;
+  background: var(--ink);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.site-nav.is-open .nav-toggle span:nth-child(1) {
+  transform: translateY(0.37rem) rotate(45deg);
+}
+
+.site-nav.is-open .nav-toggle span:nth-child(2) {
+  opacity: 0;
+}
+
+.site-nav.is-open .nav-toggle span:nth-child(3) {
+  transform: translateY(-0.37rem) rotate(-45deg);
+}
+
 .site-nav.is-scrolled {
   border-bottom-color: var(--line);
   background: rgba(238, 244, 240, 0.92);
@@ -1180,10 +1215,44 @@ tr:last-child td {
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 880px) {
+  .nav-toggle {
+    display: inline-flex;
+  }
+
   .nav-links {
     display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.5rem 1rem 1rem;
+    background: rgba(238, 244, 240, 0.97);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow);
   }
+
+  .site-nav.is-open .nav-links {
+    display: flex;
+  }
+
+  .nav-links li {
+    border-top: 1px solid var(--line);
+  }
+
+  .nav-links a {
+    display: block;
+    padding: 0.85rem 0.2rem;
+  }
+
+  body.nav-lock {
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 760px) {
 
   .split,
   .mantra-grid,
@@ -1551,5 +1620,26 @@ tr:last-child td {
   .portal-grid-3 {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+.push-page .push-steps {
+  margin: 1.1rem 0 0.4rem 1.2rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.push-page code {
+  font-size: 0.92em;
+  padding: 0.05rem 0.3rem;
+  background: rgba(15, 122, 100, 0.08);
+  border-radius: 3px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.push-table {
+  width: 100%;
 }
 

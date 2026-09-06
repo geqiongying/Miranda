@@ -14,6 +14,15 @@ Miranda 的私人 A 股学习站：**均线手记**、**量能操盘台**、**�
 | 均线手记 | `ma.html` | 买点 A/B/C、卖点 A/B；`data-engine="ma"` |
 | 量能操盘台 | `coach.html` | 买点 V/Ctl/H、卖点 V；`data-engine="volume"` |
 | 五哥笔记台 | `wuge.html` | 试盘线 / 龙头近似；`data-engine="wuge"` |
+| 微信推送 | `push.html` | 工作日 15:10 通过 PushPlus 发到微信 |
+
+## 微信收盘推送
+
+`stock_buy_alert.py` 默认监控国投中鲁 (600962)、飞龙股份 (002536)、*ST大立 (002214)。工作日北京时间 15:10 由 GitHub Actions 运行，即使没有买入观察信号也会推送当日状态。
+
+要真正发到微信，先把本仓库 Actions secret `PUSHPLUS_TOKEN` 配好，再到 Actions 里手动跑一次 `Stock close alert`。说明页：`push.html`。
+
+脚本只做观察提醒，不构成投资建议。
 
 ## 五哥笔记来源
 

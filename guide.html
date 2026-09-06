@@ -14,11 +14,16 @@
 <body class="guide-page">
   <nav class="site-nav" id="siteNav">
     <a class="brand-mark" href="./index.html">MIRANDA</a>
-    <ul class="nav-links">
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="siteNavLinks" aria-label="打开菜单">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="siteNavLinks">
       <li><a href="./ma.html#system">五线</a></li>
       <li><a href="./ma.html#review">复盘</a></li>
       <li><a href="./guide.html" aria-current="page">详解</a></li>
       <li><a href="./coach.html">量能台</a></li>
+      <li><a href="./wuge.html">五哥台</a></li>
+      <li><a href="./push.html">推送</a></li>
     </ul>
   </nav>
 
@@ -378,13 +383,9 @@
     </div>
   </footer>
 
+  <script src="./js/nav.js"></script>
   <script>
     (() => {
-      const nav = document.getElementById("siteNav");
-      window.addEventListener("scroll", () => {
-        nav.classList.toggle("is-scrolled", window.scrollY > 20);
-      });
-
       const links = [...document.querySelectorAll(".guide-toc a")];
       const blocks = links
         .map((a) => document.querySelector(a.getAttribute("href")))

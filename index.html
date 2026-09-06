@@ -14,10 +14,14 @@
 <body>
   <nav class="site-nav" id="siteNav">
     <a class="brand-mark" href="#top">MIRANDA</a>
-    <ul class="nav-links">
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="siteNavLinks" aria-label="打开菜单">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="siteNavLinks">
       <li><a href="./ma.html">均线手记</a></li>
       <li><a href="./coach.html">量能操盘台</a></li>
       <li><a href="./wuge.html">五哥笔记</a></li>
+      <li><a href="./push.html">推送</a></li>
     </ul>
   </nav>
 
@@ -59,7 +63,7 @@
         </a>
       </div>
       <div class="wrap" style="margin-top:1.5rem;">
-        <p class="muted-note">契合度不是胜率。仅供 Miranda 个人学习，不构成投资建议。</p>
+        <p class="muted-note">契合度不是胜率。仅供 Miranda 个人学习，不构成投资建议。微信收盘提醒见 <a href="./push.html" style="text-decoration:underline;">推送</a>。</p>
       </div>
     </section>
   </main>
@@ -70,9 +74,6 @@
       <p>私人三入口学习站 · 均线 / 量能 / 五哥分轨。</p>
     </div>
   </footer>
-  <script>
-    const nav = document.getElementById("siteNav");
-    window.addEventListener("scroll", () => nav.classList.toggle("is-scrolled", window.scrollY > 20));
-  </script>
+  <script src="./js/nav.js"></script>
 </body>
 </html>
