@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """PushPlus buy-signal alert for A-share trend rules.
 
-Default targets are 国投中鲁 (600962), 飞龙股份 (002536), and *ST大立
-(002214). Trend rules are intentionally simple and match the manual discipline
-used in this repository:
+The live watchlist lives in watchlist.json. Default is 国投中鲁 (600962).
+Buy-mode rules:
 
 - latest price is above the 20-day moving average
 - the 20-day moving average is flat or rising
@@ -34,6 +33,7 @@ PUSHPLUS_URL = "http://www.pushplus.plus/send"
 DEFAULT_CODE = "600962"
 DEFAULT_ALIAS = "国投中鲁"
 DEFAULT_STATE_FILE = ".stock_buy_alert_state.json"
+DEFAULT_WATCHLIST_FILE = "watchlist.json"
 
 
 @dataclass(frozen=True)
@@ -41,13 +41,6 @@ class WatchTarget:
     code: str
     alias: str
     mode: str = "buy"
-
-
-DEFAULT_WATCHLIST = (
-    WatchTarget(code="600962", alias="国投中鲁"),
-    WatchTarget(code="002536", alias="飞龙股份"),
-    WatchTarget(code="002214", alias="*ST大立", mode="st_dali"),
-)
 
 
 @dataclass(frozen=True)
@@ -415,13 +408,21 @@ def mark_sent(state_file: Path, alert_key: str) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Send PushPlus alert when an A-share buy signal triggers.")
     parser.add_argument(
+        "--watchlist",
+        default=DEFAULT_WATCHLIST_FILE,
+        help="JSON file with the stocks to watch. Default: watchlist.json.",
+    )
+    parser.add_argument(
         "--code",
-        help=(
-            "Watch a single stock code instead of the default watchlist "
-            f"({DEFAULT_CODE}/{DEFAULT_ALIAS}, 002536/飞龙股份, 002214/*ST大立)."
-        ),
+        help=f"Watch a single stock code instead of the JSON watchlist. Example: {DEFAULT_CODE}.",
     )
     parser.add_argument("--alias", help="Display name for --code.")
+    parser.add_argument(
+        "--mode",
+        choices=("buy", "st_dali"),
+        default="buy",
+        help="Rule set for --code. buy is the MA20/MA60 observation; st_dali is the old *ST大立 price-band reminder.",
+    )
     parser.add_argument(
         "--token",
         default=os.environ.get("PUSHPLUS_TOKEN"),
@@ -442,16 +443,46 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def load_watchlist(path: Path) -> list[WatchTarget]:
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise RuntimeError(f"无法读取监控名单 {path}: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"监控名单 {path} 不是合法 JSON: {exc}") from exc
+
+    rows = raw.get("stocks") if isinstance(raw, dict) else raw
+    if not isinstance(rows, list) or not rows:
+        raise RuntimeError(f"监控名单 {path} 里没有 stocks")
+
+    targets: list[WatchTarget] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        code = str(row.get("code") or "").strip()
+        if not code:
+            continue
+        alias = str(row.get("alias") or code).strip()
+        mode = str(row.get("mode") or "buy").strip() or "buy"
+        targets.append(WatchTarget(code=code, alias=alias, mode=mode))
+    if not targets:
+        raise RuntimeError(f"监控名单 {path} 没有有效股票")
+    return targets
+
+
 def resolve_watchlist(args: argparse.Namespace) -> list[WatchTarget]:
     if args.code:
-        mode = "st_dali" if args.code == "002214" else "buy"
-        return [WatchTarget(code=args.code, alias=args.alias or args.code, mode=mode)]
-    return list(DEFAULT_WATCHLIST)
+        return [WatchTarget(code=args.code, alias=args.alias or args.code, mode=args.mode)]
+    return load_watchlist(Path(args.watchlist))
 
 
 def main() -> int:
     args = parse_args()
-    targets = resolve_watchlist(args)
+    try:
+        targets = resolve_watchlist(args)
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
     snapshots: list[SignalSnapshot] = []
     errors: list[str] = []

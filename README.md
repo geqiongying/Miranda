@@ -18,9 +18,9 @@ Miranda 的私人 A 股学习站：**均线手记**、**量能操盘台**、**�
 
 ## 微信收盘推送
 
-`stock_buy_alert.py` 默认监控国投中鲁 (600962)、飞龙股份 (002536)、*ST大立 (002214)。工作日北京时间 15:10 由 GitHub Actions 运行，即使没有买入观察信号也会推送当日状态。
+监控名单在 `watchlist.json`。当前默认只看 **国投中鲁 600962**，规则是：价在 MA20 上方、MA20 走平或向上、价在 MA60 上方。飞龙股份、*ST大立 已从每日推送里拿掉。
 
-要真正发到微信，先把本仓库 Actions secret `PUSHPLUS_TOKEN` 配好，再到 Actions 里手动跑一次 `Stock close alert`。说明页：`push.html`。
+要加别的票，在 `watchlist.json` 的 `stocks` 里追加 `code` / `alias` / `mode`（普通观察用 `buy`）。工作日北京时间 15:10 由 GitHub Actions 运行；也可以在 Actions 里手动跑 `Stock close alert`。说明页：`push.html`。
 
 脚本只做观察提醒，不构成投资建议。
 
