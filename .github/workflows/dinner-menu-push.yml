@@ -1,6 +1,9 @@
 name: Dinner menu push
 
 on:
+  push:
+    branches:
+      - cursor/daily-dinner-menu-push-0b29
   schedule:
     # 11:00 China Standard Time every day.
     - cron: "0 3 * * *"
