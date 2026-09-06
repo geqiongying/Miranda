@@ -1,0 +1,35 @@
+name: Stock close alert
+
+on:
+  schedule:
+    # 15:10 China Standard Time on weekdays.
+    - cron: "10 7 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  pushplus-alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Require PushPlus token
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+        run: |
+          if [ -z "$PUSHPLUS_TOKEN" ]; then
+            echo "::error::仓库还没有配置 PUSHPLUS_TOKEN。请到 Settings → Secrets and variables → Actions 新增这个密钥，微信收盘推送才会发出。"
+            exit 1
+          fi
+
+      - name: Send close summary
+        env:
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+        run: python3 stock_buy_alert.py --notify-when-inactive

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MIRANDA · 微信推送</title>
+  <meta name="description" content="Miranda 私人收盘推送：工作日通过 PushPlus 把监控列表状态发到微信。" />
+  <meta name="author" content="Miranda Ge" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <nav class="site-nav" id="siteNav">
+    <a class="brand-mark" href="./index.html">MIRANDA</a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="siteNavLinks" aria-label="打开菜单">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="siteNavLinks">
+      <li><a href="./index.html">首页</a></li>
+      <li><a href="./ma.html">均线手记</a></li>
+      <li><a href="./coach.html">量能台</a></li>
+      <li><a href="./wuge.html">五哥台</a></li>
+      <li><a href="./push.html" aria-current="page">推送</a></li>
+    </ul>
+  </nav>
+
+  <header class="guide-hero" id="top">
+    <div class="wrap">
+      <div class="section-label">MIRANDA ALERT</div>
+      <p class="guide-kicker">菜单推送</p>
+      <h1>微信收盘推送</h1>
+      <p class="guide-lead">工作日北京时间 15:10，把默认监控列表的观察结果发到微信。这不是自动交易，只是提醒你打开券商软件核对。</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="wrap push-page">
+        <div class="section-label">01 / Why missing</div>
+        <h2>为什么你会觉得推送不见了</h2>
+        <p class="section-lead">之前做过 PushPlus 收盘提醒，但那份草稿一直没有合进正式站点。后来网站改成三入口学习站时，手机顶栏菜单也被直接藏掉了，所以「菜单」和「推送」看起来一起消失了。</p>
+        <div class="callout quote">
+          这次已经把两件事一起补回来：手机可以重新打开菜单；推送页重新出现在导航里；收盘提醒脚本也回到仓库。
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap push-page">
+        <div class="section-label">02 / Watchlist</div>
+        <h2>默认监控</h2>
+        <p class="section-lead">每天收盘后检查这些票。有买入观察信号会标明；没有信号也会发当日状态，方便确认推送还活着。</p>
+        <div class="table-wrap">
+          <table class="push-table">
+            <thead>
+              <tr>
+                <th>股票</th>
+                <th>代码</th>
+                <th>规则</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>国投中鲁</td>
+                <td>600962</td>
+                <td>价在 MA20 上方，MA20 走平或向上，且价在 MA60 上方</td>
+              </tr>
+              <tr>
+                <td>飞龙股份</td>
+                <td>002536</td>
+                <td>同上，普通买入观察</td>
+              </tr>
+              <tr>
+                <td>*ST大立</td>
+                <td>002214</td>
+                <td>持仓风险线：14.60 / 13.30 / 15.10–15.30 / 16.50</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap push-page">
+        <div class="section-label">03 / Setup</div>
+        <h2>要真正发到微信，还差一步</h2>
+        <p class="section-lead">推送 token 不能写在公开网页里。把这个 PR 合并进 <code>main</code> 之后，再到 GitHub 仓库加上密钥。</p>
+        <ol class="push-steps">
+          <li>打开 PushPlus，复制你的 token。</li>
+          <li>打开 Miranda 仓库 → Settings → Secrets and variables → Actions。</li>
+          <li>新增 Repository secret，名称填 <code>PUSHPLUS_TOKEN</code>，值填 token。</li>
+          <li>到 Actions 里手动运行一次 <strong>Stock close alert</strong>，确认微信能收到。</li>
+        </ol>
+        <div class="callout">
+          没有 token 时，定时任务会失败而不是悄悄空跑。合并本页后如果还没配密钥，GitHub Actions 会明确报错。
+        </div>
+        <p class="muted-note">提醒只按规则发出观察信号，不构成投资建议。公开行情可能延迟，买卖前仍要打开券商软件核对。</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="brand-mark">MIRANDA</div>
+      <p>私人学习站 · 微信收盘推送。</p>
+    </div>
+  </footer>
+  <script src="./js/nav.js"></script>
+</body>
+</html>

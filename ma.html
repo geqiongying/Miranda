@@ -14,13 +14,17 @@
 <body data-engine="ma">
   <nav class="site-nav" id="siteNav">
     <a class="brand-mark" href="./index.html">MIRANDA</a>
-    <ul class="nav-links">
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="siteNavLinks" aria-label="打开菜单">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="siteNavLinks">
       <li><a href="./index.html">首页</a></li>
       <li><a href="#system">五线</a></li>
       <li><a href="#review">复盘</a></li>
       <li><a href="./guide.html">详解</a></li>
       <li><a href="./coach.html">量能台</a></li>
       <li><a href="./wuge.html">五哥台</a></li>
+      <li><a href="./push.html">推送</a></li>
     </ul>
   </nav>
 
@@ -490,6 +494,7 @@
     </div>
   </footer>
 
+  <script src="./js/nav.js"></script>
   <script src="./js/app.js"></script>
 </body>
 </html>
