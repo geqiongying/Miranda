@@ -34,7 +34,7 @@ class MenuPlan:
     title: str
     note: str
     dishes: tuple[Dish, ...]
-    soup: Dish
+    soup: Dish | None
     prep_order: tuple[str, ...]
 
 
@@ -228,6 +228,90 @@ MENU_PLANS: tuple[MenuPlan, ...] = (
         ),
         prep_order=("红烧肉先入电压力锅", "准备凉菜", "炒香干芹菜", "最后做丝瓜汤"),
     ),
+    MenuPlan(
+        title="四菜快手均衡餐",
+        note="不单独做汤，四个菜口味分散，适合想多一点选择的时候。",
+        dishes=(
+            Dish(
+                "葱油鸡腿",
+                ("鸡腿4只", "小葱", "姜片", "生抽"),
+                ("鸡腿煮熟或蒸熟", "撕块装盘", "淋热葱油和生抽"),
+            ),
+            Dish(
+                "肉末茄子",
+                ("茄子3根", "肉末150g", "蒜末", "生抽"),
+                ("茄子切条蒸软或少油煎软", "肉末蒜末炒香", "下茄子调味收汁"),
+            ),
+            Dish(
+                "蘑菇炒青菜",
+                ("蘑菇300g", "小青菜500g", "蒜末"),
+                ("蘑菇先炒软", "下青菜大火快炒", "加盐和少量蚝油"),
+            ),
+            Dish(
+                "番茄炒蛋",
+                ("番茄3个", "鸡蛋4个", "葱花"),
+                ("鸡蛋先炒", "番茄炒出汁", "倒回鸡蛋调味"),
+            ),
+        ),
+        soup=None,
+        prep_order=("先蒸或煮鸡腿", "处理茄子和肉末", "炒肉末茄子", "最后做青菜和番茄蛋"),
+    ),
+    MenuPlan(
+        title="周中省事四菜餐",
+        note="不用电压力锅，基本都是快炒和凉拌，适合工作日中午收到后下班照着买菜。",
+        dishes=(
+            Dish(
+                "黑椒杏鲍菇牛肉",
+                ("牛肉片250g", "杏鲍菇2个", "洋葱半个", "黑胡椒"),
+                ("牛肉用生抽淀粉腌10分钟", "杏鲍菇煎香", "合炒后加黑胡椒"),
+            ),
+            Dish(
+                "虾仁豆腐",
+                ("虾仁250g", "嫩豆腐2盒", "葱姜"),
+                ("虾仁炒变色", "加豆腐和少量水", "盐和白胡椒调味"),
+            ),
+            Dish(
+                "清炒小白菜",
+                ("小白菜500g", "蒜末"),
+                ("大火热油", "蒜末爆香", "小白菜快炒断生"),
+            ),
+            Dish(
+                "凉拌黄瓜木耳",
+                ("黄瓜2根", "木耳", "蒜末", "香醋"),
+                ("木耳泡发焯水", "黄瓜拍碎", "加生抽香醋香油拌匀"),
+            ),
+        ),
+        soup=None,
+        prep_order=("先泡木耳并腌牛肉", "处理豆腐和虾仁", "先做凉菜", "再炒牛肉、豆腐和青菜"),
+    ),
+    MenuPlan(
+        title="不辣下饭四菜餐",
+        note="口味偏家常，不放辣也下饭，照顾孩子和老人。",
+        dishes=(
+            Dish(
+                "糖醋里脊",
+                ("里脊肉350g", "鸡蛋1个", "番茄酱", "白醋"),
+                ("里脊切条裹蛋液和淀粉", "煎或炸到定型", "糖醋汁收汁裹匀"),
+            ),
+            Dish(
+                "芹菜木耳肉片",
+                ("芹菜400g", "木耳", "瘦肉200g", "蒜片"),
+                ("肉片腌10分钟", "先炒肉片", "芹菜木耳合炒"),
+            ),
+            Dish(
+                "土豆丝",
+                ("土豆2个", "青椒1个", "醋"),
+                ("土豆丝冲水", "大火快炒", "出锅前加少量醋"),
+            ),
+            Dish(
+                "清炒生菜",
+                ("生菜2颗", "蒜末"),
+                ("蒜末爆香", "生菜快炒", "加盐出锅"),
+            ),
+        ),
+        soup=None,
+        prep_order=("先泡木耳并腌肉", "切土豆丝泡水", "先做糖醋里脊", "再炒肉片、土豆丝和生菜"),
+    ),
 )
 
 
@@ -237,17 +321,20 @@ def pick_menu(for_date: dt.date) -> MenuPlan:
 
 def shopping_list(menu: MenuPlan) -> list[str]:
     items: list[str] = []
-    for dish in (*menu.dishes, menu.soup):
+    dishes = (*menu.dishes, menu.soup) if menu.soup else menu.dishes
+    for dish in dishes:
         items.extend(dish.ingredients)
     return list(dict.fromkeys(items))
 
 
 def build_message(menu: MenuPlan, for_date: dt.date, servings: int) -> str:
+    menu_style = "三菜一汤" if menu.soup else f"{len(menu.dishes)}个菜"
     lines = [
         f"# 今晚家常菜推荐：{menu.title}",
         "",
         f"- 日期：{for_date.isoformat()}",
         f"- 人数：约 {servings} 人",
+        f"- 组合：{menu_style}",
         f"- 思路：{menu.note}",
         "",
         "## 菜单",
@@ -263,15 +350,17 @@ def build_message(menu: MenuPlan, for_date: dt.date, servings: int) -> str:
             ]
         )
 
-    lines.extend(
-        [
-            f"### 汤：{menu.soup.name}",
-            f"- 食材：{'、'.join(menu.soup.ingredients)}",
-            f"- 做法：{'；'.join(menu.soup.steps)}",
-            "",
-            "## 做饭顺序",
-        ]
-    )
+    if menu.soup:
+        lines.extend(
+            [
+                f"### 汤：{menu.soup.name}",
+                f"- 食材：{'、'.join(menu.soup.ingredients)}",
+                f"- 做法：{'；'.join(menu.soup.steps)}",
+                "",
+            ]
+        )
+
+    lines.append("## 做饭顺序")
     lines.extend(f"{index}. {step}" for index, step in enumerate(menu.prep_order, start=1))
     lines.extend(
         [
@@ -349,8 +438,9 @@ def main() -> int:
         return 1
 
     menu = pick_menu(for_date)
-    title = f"今晚四人晚饭推荐：{menu.title}"
-    content = build_message(menu, for_date, max(args.servings, 1))
+    servings = max(args.servings, 1)
+    title = f"今晚{servings}人晚饭推荐：{menu.title}"
+    content = build_message(menu, for_date, servings)
 
     if args.dry_run:
         print(f"Title: {title}\n")
