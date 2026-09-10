@@ -1,13 +1,13 @@
-name: Dinner menu push
+name: Daily menu alert
 
 on:
   schedule:
-    # 11:00 China Standard Time every day.
-    - cron: "0 3 * * *"
+    # 08:20 China Standard Time on weekdays, before the open.
+    - cron: "20 0 * * 1-5"
   workflow_dispatch:
 
 jobs:
-  pushplus-dinner-menu:
+  pushplus-menu:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -25,12 +25,11 @@ jobs:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
         run: |
           if [ -z "$PUSHPLUS_TOKEN" ]; then
-            echo "::error::仓库还没有配置 PUSHPLUS_TOKEN。请到 Settings → Secrets and variables → Actions 新增这个密钥，晚饭菜单推送才会发出。"
+            echo "::error::仓库还没有配置 PUSHPLUS_TOKEN。请到 Settings → Secrets and variables → Actions 确认这个密钥。"
             exit 1
           fi
 
-      - name: Send dinner menu
+      - name: Send daily observation menu
         env:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
-          PUSHPLUS_TOPIC: ${{ secrets.PUSHPLUS_TOPIC }}
-        run: python3 dinner_menu_push.py
+        run: python3 daily_menu_alert.py

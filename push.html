@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MIRANDA · 微信推送</title>
-  <meta name="description" content="Miranda 私人推送中心：通过 PushPlus 把收盘提醒和每日晚饭菜单发到微信。" />
+  <meta name="description" content="Miranda 私人推送中心：收盘提醒、每日观察菜单和每日晚饭菜单通过 PushPlus 发到微信。" />
   <meta name="author" content="Miranda Ge" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -31,7 +31,7 @@
       <div class="section-label">MIRANDA ALERT</div>
       <p class="guide-kicker">PushPlus</p>
       <h1>微信推送中心</h1>
-      <p class="guide-lead">通过 PushPlus 把收盘观察和每日晚饭菜单发到微信。一个负责提醒你复盘，一个负责解决晚饭吃什么。</p>
+      <p class="guide-lead">三条线分开发：收盘盯自选股，早盘发股票观察菜单，中午发晚饭家常菜。股票内容不是自动交易，只是提醒你打开券商软件核对。</p>
     </div>
   </header>
 
@@ -42,7 +42,7 @@
         <h2>为什么你会觉得推送不见了</h2>
         <p class="section-lead">PushPlus token 不能写在公开网页里，所以所有真实推送都放在 GitHub Actions 里运行。网页只保留说明和入口，具体发送由脚本完成。</p>
         <div class="callout quote">
-          当前包含两类推送：工作日收盘提醒、每天晚饭四人家常菜推荐。
+          当前包含三类推送：工作日收盘提醒、工作日股票观察菜单、每天晚饭四人家常菜推荐。
         </div>
       </div>
     </section>
@@ -85,7 +85,18 @@
 
     <section class="section">
       <div class="wrap push-page">
-        <div class="section-label">03 / Dinner</div>
+        <div class="section-label">03 / Daily menu</div>
+        <h2>每日观察菜单</h2>
+        <p class="section-lead">这是第二条推送。工作日北京时间 <strong>08:20</strong> 从沪深主板 / 创业板 / 科创板里筛一份短线 5 只、中线 5 只的观察名单。它不是量能台或五哥台的教学买点，只是第一层观察菜单。</p>
+        <div class="callout quote">
+          到 Actions 里手动运行一次 <strong>Daily menu alert</strong>，微信就会马上收到今天的股票观察菜单。之后每个工作日早上自动再发。
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap push-page">
+        <div class="section-label">04 / Dinner</div>
         <h2>每日晚饭菜单推送</h2>
         <p class="section-lead">每天北京时间 11:00 自动推送一套四人份家常晚饭菜单，脚本会在三菜一汤和四个菜之间自动轮换，并附上做饭顺序和买菜清单。</p>
         <div class="table-wrap">
@@ -124,18 +135,16 @@
 
     <section class="section">
       <div class="wrap push-page">
-        <div class="section-label">04 / Setup</div>
-        <h2>要真正发到微信，还差一步</h2>
-        <p class="section-lead">把这个 PR 合并进 <code>main</code> 之后，到 GitHub 仓库加上 PushPlus 密钥。收盘提醒和晚饭菜单会复用同一个 token。</p>
+        <div class="section-label">05 / Setup</div>
+        <h2>密钥已经配好</h2>
+        <p class="section-lead"><code>PUSHPLUS_TOKEN</code> 已经在仓库里。收盘提醒用 <strong>Stock close alert</strong>；股票观察菜单用 <strong>Daily menu alert</strong>；晚饭菜单用 <strong>Dinner menu push</strong>。三条都可以在 Actions 里手动试发。</p>
         <ol class="push-steps">
-          <li>打开 PushPlus，复制你的 token。</li>
-          <li>打开 Miranda 仓库 → Settings → Secrets and variables → Actions。</li>
-          <li>新增 Repository secret，名称填 <code>PUSHPLUS_TOKEN</code>，值填 token。</li>
-          <li>如果要发到 PushPlus 群组，可再新增 <code>PUSHPLUS_TOPIC</code>。</li>
-          <li>到 Actions 里手动运行一次 <strong>Dinner menu push</strong>，确认微信能收到。</li>
+          <li>打开 Actions，选择要测试的工作流。</li>
+          <li>点 <strong>Run workflow</strong>，分支选 <code>main</code>。</li>
+          <li>微信里应收到对应的 PushPlus 推送。</li>
         </ol>
         <div class="callout">
-          没有 token 时，定时任务会失败而不是悄悄空跑，GitHub Actions 会明确报错。
+          没有 token 时任务会明确失败，而不是悄悄空跑。
         </div>
         <p class="muted-note">股票提醒只按规则发出观察信号，不构成投资建议。晚饭菜单仅作家常备餐参考，可按家人口味替换食材。</p>
       </div>
