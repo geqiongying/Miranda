@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MIRANDA · 微信推送</title>
-  <meta name="description" content="Miranda 私人微信推送：收盘盯盘提醒 + 每日观察菜单。" />
+  <meta name="description" content="Miranda 私人微信推送：每日做饭菜单、收盘盯盘、股票观察名单。" />
   <meta name="author" content="Miranda Ge" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -29,20 +29,20 @@
   <header class="guide-hero" id="top">
     <div class="wrap">
       <div class="section-label">MIRANDA ALERT</div>
-      <p class="guide-kicker">菜单推送</p>
+      <p class="guide-kicker">做饭菜单</p>
       <h1>微信推送</h1>
-      <p class="guide-lead">两条线分开发：收盘盯自选股，早盘发每日观察菜单。都不是自动交易，只是提醒你打开券商软件核对。</p>
+      <p class="guide-lead">每天早上发<strong>做饭菜单</strong>。工作日另外还有收盘盯盘和股票观察名单。做饭那条的标题是「今日做饭菜单」。</p>
     </div>
   </header>
 
   <main>
     <section class="section">
       <div class="wrap push-page">
-        <div class="section-label">01 / Why missing</div>
-        <h2>为什么你会觉得推送不见了</h2>
-        <p class="section-lead">之前做过 PushPlus 收盘提醒，但那份草稿一直没有合进正式站点。后来网站改成三入口学习站时，手机顶栏菜单也被直接藏掉了，所以「菜单」和「推送」看起来一起消失了。</p>
+        <div class="section-label">01 / Cooking</div>
+        <h2>每日做饭菜单</h2>
+        <p class="section-lead">早餐、午餐、晚餐（荤菜 + 素菜 + 米饭/汤）和采购备忘。每天北京时间 <strong>07:30</strong> 自动发，周末也发。微信标题：<strong>今日做饭菜单</strong>。</p>
         <div class="callout quote">
-          这次已经把两件事一起补回来：手机可以重新打开菜单；推送页重新出现在导航里；收盘提醒脚本也回到仓库。
+          合并后到 Actions 跑一次 <strong>Cook menu alert</strong>，微信马上会收到今天吃什么。
         </div>
       </div>
     </section>
@@ -50,8 +50,8 @@
     <section class="section">
       <div class="wrap push-page">
         <div class="section-label">02 / Watchlist</div>
-        <h2>默认监控</h2>
-        <p class="section-lead">每天收盘后检查这些票。有买入观察信号会标明；没有信号也会发当日状态，方便确认推送还活着。</p>
+        <h2>收盘盯盘</h2>
+        <p class="section-lead">工作日 15:10 检查自选股。有买入观察信号会标明；没有信号也会发当日状态。</p>
         <div class="table-wrap">
           <table class="push-table">
             <thead>
@@ -85,29 +85,23 @@
 
     <section class="section">
       <div class="wrap push-page">
-        <div class="section-label">03 / Daily menu</div>
-        <h2>每日观察菜单</h2>
-        <p class="section-lead">这是第二条推送。工作日北京时间 <strong>08:20</strong> 从沪深主板 / 创业板 / 科创板里筛一份短线 5 只、中线 5 只的观察名单。它不是量能台或五哥台的教学买点，只是第一层观察菜单。</p>
-        <div class="callout quote">
-          合并后到 Actions 里手动运行一次 <strong>Daily menu alert</strong>，微信就会马上收到今天的菜单。之后每个工作日早上自动再发。
-        </div>
+        <div class="section-label">03 / Stock list</div>
+        <h2>股票观察名单（不是做饭）</h2>
+        <p class="section-lead">工作日另发短线 / 中线各 5 只观察票，标题是「Miranda 每日观察菜单」。那是股票，不是菜谱。</p>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap push-page">
-        <div class="section-label">04 / Setup</div>
-        <h2>密钥已经配好</h2>
-        <p class="section-lead"><code>PUSHPLUS_TOKEN</code> 已经在仓库里。收盘提醒用 <strong>Stock close alert</strong>；每日菜单用 <strong>Daily menu alert</strong>。两条都可以在 Actions 里手动试发。</p>
+        <div class="section-label">04 / Try it</div>
+        <h2>马上试发做饭菜单</h2>
+        <p class="section-lead">密钥已经在仓库里。做饭菜单用 <strong>Cook menu alert</strong>。</p>
         <ol class="push-steps">
-          <li>打开 Actions：<code>Daily menu alert</code>。</li>
+          <li>打开 <a href="https://github.com/geqiongying/Miranda/actions/workflows/cook-menu-alert.yml" style="text-decoration:underline;">Cook menu alert</a></li>
           <li>点 <strong>Run workflow</strong>，分支选 <code>main</code>。</li>
-          <li>微信里应收到「Miranda 每日观察菜单」。</li>
+          <li>微信应收到标题「今日做饭菜单」。</li>
         </ol>
-        <div class="callout">
-          没有 token 时任务会明确失败，而不是悄悄空跑。
-        </div>
-        <p class="muted-note">提醒只按规则发出观察信号，不构成投资建议。公开行情可能延迟，买卖前仍要打开券商软件核对。</p>
+        <p class="muted-note">股票提醒不构成投资建议。做饭菜单只是家常三餐建议。</p>
       </div>
     </section>
   </main>
@@ -115,7 +109,7 @@
   <footer class="site-footer">
     <div class="wrap">
       <div class="brand-mark">MIRANDA</div>
-      <p>私人学习站 · 微信收盘盯盘 + 每日观察菜单。</p>
+      <p>私人学习站 · 做饭菜单 / 收盘盯盘 / 股票观察。</p>
     </div>
   </footer>
   <script src="./js/nav.js"></script>

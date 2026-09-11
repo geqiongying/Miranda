@@ -14,17 +14,21 @@ Miranda 的私人 A 股学习站：**均线手记**、**量能操盘台**、**�
 | 均线手记 | `ma.html` | 买点 A/B/C、卖点 A/B；`data-engine="ma"` |
 | 量能操盘台 | `coach.html` | 买点 V/Ctl/H、卖点 V；`data-engine="volume"` |
 | 五哥笔记台 | `wuge.html` | 试盘线 / 龙头近似；`data-engine="wuge"` |
-| 微信推送 | `push.html` | 收盘盯盘 + 每日观察菜单 |
+| 微信推送 | `push.html` | 做饭菜单 + 收盘盯盘 + 股票观察名单 |
+
+## 每日做饭菜单
+
+`cook_menu_alert.py` 每天北京时间 **07:30** 推送早餐 / 午餐 / 晚餐，微信标题是 **今日做饭菜单**。Actions：`Cook menu alert`，周末也发。
 
 ## 微信收盘推送
 
-`stock_buy_alert.py` 默认监控国投中鲁 (600962)、飞龙股份 (002536)、*ST大立 (002214)。工作日北京时间 15:10 由 GitHub Actions 运行，即使没有买入观察信号也会推送当日状态。
+`stock_buy_alert.py` 默认监控国投中鲁 (600962)、飞龙股份 (002536)、*ST大立 (002214)。工作日北京时间 15:10 运行。
 
-## 每日观察菜单
+## 股票观察名单
 
-`daily_menu_alert.py` 工作日北京时间 **08:20** 推送短线 / 中线各 5 只观察票。这是第一层筛选菜单，不是教学买点。Actions 工作流名：`Daily menu alert`，可手动试发。
+`daily_menu_alert.py` 工作日另发短线 / 中线各 5 只观察票，标题是「Miranda 每日观察菜单」。那是股票，不是菜谱。
 
-两条推送共用仓库 secret `PUSHPLUS_TOKEN`。说明页：`push.html`。
+三条推送共用 `PUSHPLUS_TOKEN`。说明页：`push.html`。
 
 脚本只做观察提醒，不构成投资建议。
 
