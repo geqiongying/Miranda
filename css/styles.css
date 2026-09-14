@@ -1528,6 +1528,10 @@ tr:last-child td {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.portal-grid-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .portal-entry {
   display: grid;
   gap: 0.75rem;
@@ -1549,6 +1553,12 @@ tr:last-child td {
   background:
     linear-gradient(165deg, rgba(248, 251, 249, 0.94), rgba(15, 122, 100, 0.14));
   animation-delay: 0.22s;
+}
+
+.portal-entry-board {
+  background:
+    linear-gradient(165deg, rgba(248, 251, 249, 0.95), rgba(28, 51, 44, 0.08));
+  animation-delay: 0.3s;
 }
 
 .portal-entry:hover,
@@ -1607,7 +1617,8 @@ tr:last-child td {
 
 @media (max-width: 720px) {
   .portal-grid,
-  .portal-grid-3 {
+  .portal-grid-3,
+  .portal-grid-4 {
     grid-template-columns: 1fr;
   }
 
@@ -1617,8 +1628,114 @@ tr:last-child td {
 }
 
 @media (min-width: 721px) and (max-width: 980px) {
-  .portal-grid-3 {
+  .portal-grid-3,
+  .portal-grid-4 {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Sector board desk */
+.sector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.sector-card {
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(248, 251, 249, 0.96), rgba(223, 234, 227, 0.4));
+  padding: 1rem 1.1rem 1.15rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.sector-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.sector-head h3 {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  line-height: 1.3;
+}
+
+.sector-count {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.sector-thesis {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.sector-list {
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.sector-stock {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.35rem 0;
+  border-top: 1px dashed var(--line);
+  font-size: 0.92rem;
+}
+
+.sector-stock:first-child {
+  border-top: 0;
+}
+
+.sector-px.up {
+  color: var(--rise);
+}
+
+.sector-px.down {
+  color: var(--fall);
+}
+
+.core-tag {
+  display: inline-block;
+  margin-left: 0.25rem;
+  font-style: normal;
+  font-size: 0.72rem;
+  color: var(--teal-deep);
+  border: 1px solid rgba(15, 122, 100, 0.28);
+  padding: 0.05rem 0.35rem;
+}
+
+.horizon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.horizon-col h3 {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  margin-bottom: 0.35rem;
+}
+
+.board-rank-card {
+  text-align: left;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+@media (max-width: 800px) {
+  .sector-grid,
+  .horizon-grid {
+    grid-template-columns: 1fr;
   }
 }
 
