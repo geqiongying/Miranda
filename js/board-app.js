@@ -1,60 +1,137 @@
 (() => {
+  // 板块口径对齐 notes/2026年9月14日学习.pdf（化工 / 资源 / 液冷 / 光通信 / 存储）
   const SECTORS = [
     {
-      id: "packaging",
-      name: "先进封装",
-      thesis: "先进封装主线：关注封装龙头与设备检测相关标的。",
-      boards: ["BK1101"],
+      id: "fertilizer",
+      name: "化肥",
+      thesis: "吃的线：磷 / 氮 / 钾龙头。讲话口径可做超短，复合肥略过；价格有限价，弹性偶发。",
+      preferredHorizon: "short",
+      boards: ["BK1435", "BK1432", "BK1434"],
       core: [
-        { code: "600584", tip: "封装龙头" },
-        { code: "688361", tip: "设备检测" },
+        { code: "600096", tip: "磷肥龙头 · 矿化一体" },
+        { code: "600426", tip: "氮肥 / 尿素 · 煤化工交叉" },
+        { code: "000792", tip: "钾肥龙头 · 察尔汗盐湖" },
       ],
     },
     {
-      id: "semi",
-      name: "半导体芯片",
-      thesis: "半导体设计 / 制造观察池，偏中长期产业趋势。",
-      boards: ["BK0917", "BK1036"],
+      id: "refining",
+      name: "大炼化",
+      thesis: "穿的线上游：炼化一体化偏中长线；无中长思维勿碰。优先龙头，卫星化学作丙烯补充。",
+      preferredHorizon: "mid",
+      boards: ["BK1274"],
       core: [
-        { code: "688981", tip: "制造风向" },
-        { code: "688521", tip: "芯片 IP" },
+        { code: "600346", tip: "大炼化优先观察" },
+        { code: "002493", tip: "芳烃 / 烯烃" },
+        { code: "000301", tip: "盛虹 · 差异化路线" },
+        { code: "002648", tip: "丙烯 / 乙二醇蓝筹" },
       ],
     },
     {
-      id: "cpo",
-      name: "CPO / 光通信",
-      thesis: "光模块与 CPO 景气观察，注意估值与情绪兑现。",
-      boards: ["BK1128", "BK1136"],
-      core: [{ code: "300308", tip: "光模块样本" }],
-    },
-    {
-      id: "materials",
-      name: "电子材料",
-      thesis: "电子材料与 PCB 相关：陶瓷材料、覆铜板等。",
-      boards: ["BK0877", "BK1340"],
+      id: "fiberchem",
+      name: "化纤",
+      thesis: "涤纶长丝 / 氨纶等：中长线；讲话点名桐昆、华峰，江南高纤偏弹性。",
+      preferredHorizon: "mid",
+      boards: ["BK1413", "BK0471"],
       core: [
-        { code: "300285", tip: "材料" },
-        { code: "603186", tip: "覆铜板 / 材料" },
+        { code: "601233", tip: "涤纶长丝龙头" },
+        { code: "002064", tip: "氨纶龙头 · 非万华" },
+        { code: "600527", tip: "小票弹性观察" },
       ],
     },
     {
-      id: "fiberglass",
-      name: "玻纤制造",
-      thesis: "玻纤产业链龙头观察，偏中期供需与价格节奏。",
-      boards: ["BK1462"],
-      core: [{ code: "600176", tip: "玻纤龙头" }],
+      id: "coalchem",
+      name: "煤化工",
+      thesis: "盯油价黄金点约 85 美元（约 75–95）。宝丰偏基本面，华鲁次之，金牛偏高弹性。",
+      preferredHorizon: "mid",
+      boards: ["BK1419", "BK0492"],
+      core: [
+        { code: "600989", tip: "基本面优先" },
+        { code: "600426", tip: "煤化工 + 氮肥" },
+        { code: "600722", tip: "高弹性 · 波动大" },
+      ],
     },
     {
-      id: "compute",
-      name: "算力 / 存储",
-      thesis: "算力与存储主题扩展池，短线波动可能更大。",
-      boards: ["BK1134", "BK1137"],
-      core: [],
+      id: "coal",
+      name: "煤炭资源",
+      thesis: "讲话捎带：后续或单独讲资源类；现阶段先盯兖矿能源。",
+      preferredHorizon: "mid",
+      boards: ["BK0437", "BK1250"],
+      core: [{ code: "600188", tip: "煤炭蓝筹样本" }],
+    },
+    {
+      id: "liquidcool",
+      name: "液冷",
+      thesis: "PUE 政策把液冷从可选项推成刚需；当下以冷板为主。看 CDU、冷板、快接头、氟化液、泵。已涨多的勿追高。",
+      preferredHorizon: "both",
+      boards: ["BK1138"],
+      core: [
+        { code: "002837", tip: "CDU / 系统级一线" },
+        { code: "301018", tip: "CDU · 国产 / 华为链" },
+        { code: "300990", tip: "CDU · 机架式" },
+        { code: "300499", tip: "浸没 / 静默观察（OCR 康朗对高澜）" },
+        { code: "300602", tip: "微通道冷板" },
+        { code: "301128", tip: "冷板 + 快接头 · 华为链" },
+        { code: "002126", tip: "冷板相关（OCR 英伦对银轮）" },
+        { code: "002179", tip: "UQD 快接头龙头" },
+        { code: "002475", tip: "快接头供应链（OCR 礼仪→立讯）" },
+        { code: "600160", tip: "氟化液大厂" },
+        { code: "300037", tip: "半导体冷却液" },
+        { code: "605020", tip: "电子氟化液后来者" },
+        { code: "002536", tip: "液冷水泵 · 订单可见" },
+        { code: "603757", tip: "屏蔽泵竞争者" },
+        { code: "300547", tip: "管路 / 软管（OCR 环川→川环）" },
+      ],
+    },
+    {
+      id: "opticfiber",
+      name: "光纤",
+      thesis: "光通信路基：AI 机柜光纤用量抬升；龙头长飞最纯，亨通 / 烽火可看，注意估值与扩产时间差。",
+      preferredHorizon: "mid",
+      boards: ["BK1660"],
+      core: [
+        { code: "601869", tip: "光棒工艺最全 · 最纯" },
+        { code: "600487", tip: "光纤龙头之一 · 散户多" },
+        { code: "600498", tip: "烽火 · 业务较杂" },
+      ],
+    },
+    {
+      id: "optical",
+      name: "光模块 / 光芯片",
+      thesis: "顺着整条链看：模块赚规模钱，光芯片 / DSP 才是发动机。A 股高端 DSP 讲话口径先放弃；CPO 不是可插拔模块。",
+      preferredHorizon: "both",
+      boards: ["BK1136", "BK1128"],
+      core: [
+        { code: "300308", tip: "光模块海外链 · 光老大" },
+        { code: "300502", tip: "光模块海外链" },
+        { code: "000988", tip: "华工 · 偏国内亦有出口" },
+        { code: "002281", tip: "光迅 · IDM 全产业链" },
+        { code: "002384", tip: "东山精密 · 模块五家之一" },
+        { code: "688498", tip: "国产光芯片领军（源杰）" },
+        { code: "002428", tip: "磷化铟衬底（OCR 云南九业→锗业）" },
+      ],
+    },
+    {
+      id: "memory",
+      name: "存储",
+      thesis: "AI 换爹后的周期+成长：讲话更看原厂 / 接口芯片，跳过模组与纯设计大仓位；HBM 仍是短板。",
+      preferredHorizon: "both",
+      boards: ["BK1137"],
+      core: [
+        { code: "688825", tip: "长鑫 · DRAM 原厂（勿盲目大仓）" },
+        { code: "688008", tip: "澜起 · 内存接口双寡头（OCR 狼王/蓝企）" },
+        { code: "603986", tip: "设计全品类 · 讲话建议跳过大仓" },
+        { code: "000021", tip: "封测 · 美光/长鑫相关" },
+        { code: "600667", tip: "封测 · 海力士链" },
+        { code: "600584", tip: "封测龙头之一" },
+        { code: "002156", tip: "封测 · HBM 封装突破中" },
+        { code: "688525", tip: "模组弹性大 · 利润逻辑变弱" },
+        { code: "301308", tip: "模组龙头 · 同上谨慎" },
+      ],
     },
   ];
 
-  const BOARD_EXPAND_LIMIT = 18;
-  const SCAN_POOL_CAP = 100;
+  const BOARD_EXPAND_LIMIT = 14;
+  const SCAN_POOL_CAP = 120;
 
   function fetchJsonp(url, timeoutMs = 14000) {
     return new Promise((resolve, reject) => {
@@ -213,6 +290,18 @@
     return true;
   }
 
+  function sectorBiasBonus(s, horizon) {
+    const sector = SECTORS.find((x) => x.id === s.sectorId);
+    const bias = sector?.preferredHorizon || "both";
+    if (bias === "both" || bias === horizon) {
+      return {
+        bonus: bias === horizon ? 8 : 4,
+        note: bias === horizon ? "板块口径偏" + (horizon === "short" ? "短期" : "中期") : "板块短/中均可观察",
+      };
+    }
+    return { bonus: 0, note: "" };
+  }
+
   function scoreShort(s) {
     let score = 0;
     const signals = [];
@@ -274,6 +363,12 @@
       score += 4;
       signals.push("PB偏高/缺失");
     }
+    const bias = sectorBiasBonus(s, "short");
+    if (bias.bonus) {
+      score += bias.bonus;
+      signals.push(bias.note);
+    }
+    if (s.tip) signals.push(s.tip);
     return { score, signals };
   }
 
@@ -345,6 +440,12 @@
       score += 4;
       signals.push("量比偏高/缺失");
     }
+    const bias = sectorBiasBonus(s, "mid");
+    if (bias.bonus) {
+      score += bias.bonus;
+      signals.push(bias.note);
+    }
+    if (s.tip) signals.push(s.tip);
     return { score, signals };
   }
 
