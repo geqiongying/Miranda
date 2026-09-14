@@ -1,12 +1,11 @@
 (() => {
-  // 板块口径对齐 notes/2026年9月14日学习.pdf（化工 / 资源 / 液冷 / 光通信 / 存储）
+  // 只收录 notes/2026年9月14日学习.pdf 点名的票，不做东财板块扩展
   const SECTORS = [
     {
       id: "fertilizer",
       name: "化肥",
       thesis: "吃的线：磷 / 氮 / 钾龙头。讲话口径可做超短，复合肥略过；价格有限价，弹性偶发。",
       preferredHorizon: "short",
-      boards: ["BK1435", "BK1432", "BK1434"],
       core: [
         { code: "600096", tip: "磷肥龙头 · 矿化一体" },
         { code: "600426", tip: "氮肥 / 尿素 · 煤化工交叉" },
@@ -18,7 +17,6 @@
       name: "大炼化",
       thesis: "穿的线上游：炼化一体化偏中长线；无中长思维勿碰。优先龙头，卫星化学作丙烯补充。",
       preferredHorizon: "mid",
-      boards: ["BK1274"],
       core: [
         { code: "600346", tip: "大炼化优先观察" },
         { code: "002493", tip: "芳烃 / 烯烃" },
@@ -31,7 +29,6 @@
       name: "化纤",
       thesis: "涤纶长丝 / 氨纶等：中长线；讲话点名桐昆、华峰，江南高纤偏弹性。",
       preferredHorizon: "mid",
-      boards: ["BK1413", "BK0471"],
       core: [
         { code: "601233", tip: "涤纶长丝龙头" },
         { code: "002064", tip: "氨纶龙头 · 非万华" },
@@ -43,7 +40,6 @@
       name: "煤化工",
       thesis: "盯油价黄金点约 85 美元（约 75–95）。宝丰偏基本面，华鲁次之，金牛偏高弹性。",
       preferredHorizon: "mid",
-      boards: ["BK1419", "BK0492"],
       core: [
         { code: "600989", tip: "基本面优先" },
         { code: "600426", tip: "煤化工 + 氮肥" },
@@ -55,7 +51,6 @@
       name: "煤炭资源",
       thesis: "讲话捎带：后续或单独讲资源类；现阶段先盯兖矿能源。",
       preferredHorizon: "mid",
-      boards: ["BK0437", "BK1250"],
       core: [{ code: "600188", tip: "煤炭蓝筹样本" }],
     },
     {
@@ -63,7 +58,6 @@
       name: "液冷",
       thesis: "PUE 政策把液冷从可选项推成刚需；当下以冷板为主。看 CDU、冷板、快接头、氟化液、泵。已涨多的勿追高。",
       preferredHorizon: "both",
-      boards: ["BK1138"],
       core: [
         { code: "002837", tip: "CDU / 系统级一线" },
         { code: "301018", tip: "CDU · 国产 / 华为链" },
@@ -87,7 +81,6 @@
       name: "光纤",
       thesis: "光通信路基：AI 机柜光纤用量抬升；龙头长飞最纯，亨通 / 烽火可看，注意估值与扩产时间差。",
       preferredHorizon: "mid",
-      boards: ["BK1660"],
       core: [
         { code: "601869", tip: "光棒工艺最全 · 最纯" },
         { code: "600487", tip: "光纤龙头之一 · 散户多" },
@@ -99,7 +92,6 @@
       name: "光模块 / 光芯片",
       thesis: "顺着整条链看：模块赚规模钱，光芯片 / DSP 才是发动机。A 股高端 DSP 讲话口径先放弃；CPO 不是可插拔模块。",
       preferredHorizon: "both",
-      boards: ["BK1136", "BK1128"],
       core: [
         { code: "300308", tip: "光模块海外链 · 光老大" },
         { code: "300502", tip: "光模块海外链" },
@@ -115,7 +107,6 @@
       name: "存储",
       thesis: "AI 换爹后的周期+成长：讲话更看原厂 / 接口芯片，跳过模组与纯设计大仓位；HBM 仍是短板。",
       preferredHorizon: "both",
-      boards: ["BK1137"],
       core: [
         { code: "688825", tip: "长鑫 · DRAM 原厂（勿盲目大仓）" },
         { code: "688008", tip: "澜起 · 内存接口双寡头" },
@@ -130,8 +121,7 @@
     },
   ];
 
-  const BOARD_EXPAND_LIMIT = 14;
-  const SCAN_POOL_CAP = 120;
+  const SCAN_POOL_CAP = 80;
 
   function fetchJsonp(url, timeoutMs = 14000) {
     return new Promise((resolve, reject) => {
@@ -171,20 +161,6 @@
     return name && !/ST|退|^N|^C/i.test(name);
   }
 
-  function boardListUrl(bk, pn = 1, pz = 50) {
-    const fields = "f12,f14,f2,f3,f8,f9,f10,f20,f21,f23,f115";
-    return (
-      "https://push2delay.eastmoney.com/api/qt/clist/get?pn=" +
-      pn +
-      "&pz=" +
-      pz +
-      "&po=1&np=1&fltt=2&invt=2&fid=f3&fs=" +
-      encodeURIComponent("b:" + bk) +
-      "&fields=" +
-      fields
-    );
-  }
-
   function quoteUrl(secid) {
     return (
       "https://push2delay.eastmoney.com/api/qt/stock/get?secid=" +
@@ -197,35 +173,6 @@
     if (/^[6]\d{5}$/.test(code)) return "1." + code;
     if (/^(00|30)\d{4}$/.test(code)) return "0." + code;
     return null;
-  }
-
-  function parseListRow(row, sectorId, tip) {
-    const code = String(row.f12 || "");
-    const name = String(row.f14 || "");
-    if (!/^\d{6}$/.test(code) || !isCleanName(name)) return null;
-    if (!/^(60|00|30|68)\d{4}$/.test(code)) return null;
-    return {
-      code,
-      name,
-      tip: tip || "",
-      sectorId,
-      price: num(row.f2),
-      changePct: num(row.f3),
-      turnover: num(row.f8),
-      peDynamic: num(row.f9),
-      volumeRatio: num(row.f10),
-      mcap: num(row.f20),
-      floatMcap: num(row.f21),
-      pb: num(row.f23),
-      peTtm: num(row.f115),
-    };
-  }
-
-  async function fetchBoardRows(bk) {
-    const data = await fetchJsonp(boardListUrl(bk, 1, 60), 18000);
-    const diff = data?.data?.diff;
-    if (!Array.isArray(diff)) return [];
-    return diff;
   }
 
   async function fetchQuoteRow(code) {
@@ -478,12 +425,10 @@
     if (!els.sectorBoard) return;
     els.sectorBoard.innerHTML = SECTORS.map((sector) => {
       const pool = state.sectorPools[sector.id] || [];
-      const coreCodes = new Set((sector.core || []).map((c) => c.code));
-      const rows = pool.slice(0, 12);
+      const rows = pool;
       const body = rows.length
         ? rows
             .map((s) => {
-              const badge = coreCodes.has(s.code) ? '<em class="core-tag">核心</em>' : "";
               const chg = (s.changePct >= 0 ? "+" : "") + s.changePct.toFixed(2) + "%";
               const cls = s.changePct >= 0 ? "up" : "down";
               return (
@@ -491,7 +436,7 @@
                 "<div><strong>" +
                 escapeHtml(s.name) +
                 "</strong> " +
-                badge +
+                '<em class="core-tag">笔记</em>' +
                 '<span class="muted"> ' +
                 escapeHtml(s.code) +
                 (s.tip ? " · " + escapeHtml(s.tip) : "") +
@@ -507,7 +452,7 @@
               );
             })
             .join("")
-        : '<li class="empty-picks">尚未加载成分，点击上方「加载板块推荐池」。</li>';
+        : '<li class="empty-picks">尚未加载，点击上方「加载笔记点名票」。</li>';
       return (
         '<article class="sector-card" id="sector-' +
         sector.id +
@@ -540,34 +485,31 @@
     const byCode = new Map();
     for (const item of sector.core || []) {
       const quote = await fetchQuoteRow(item.code);
-      if (!quote || !isCleanName(quote.name)) continue;
+      if (quote && isCleanName(quote.name)) {
+        byCode.set(item.code, {
+          ...quote,
+          tip: item.tip || "",
+          sectorId: sector.id,
+          peTtm: quote.peTtm || quote.peDynamic || 0,
+        });
+        continue;
+      }
+      // 行情失败也保留笔记点名票，避免池子缺人
       byCode.set(item.code, {
-        ...quote,
+        code: item.code,
+        name: item.code,
         tip: item.tip || "",
         sectorId: sector.id,
-        peTtm: quote.peTtm || quote.peDynamic || 0,
+        price: 0,
+        changePct: 0,
+        turnover: 0,
+        peDynamic: 0,
+        volumeRatio: 0,
+        mcap: 0,
+        floatMcap: 0,
+        pb: 0,
+        peTtm: 0,
       });
-    }
-    for (const bk of sector.boards || []) {
-      try {
-        const rows = await fetchBoardRows(bk);
-        for (const row of rows.slice(0, BOARD_EXPAND_LIMIT)) {
-          const parsed = parseListRow(row, sector.id, "");
-          if (!parsed) continue;
-          if (!byCode.has(parsed.code)) byCode.set(parsed.code, parsed);
-          else {
-            const prev = byCode.get(parsed.code);
-            byCode.set(parsed.code, {
-              ...prev,
-              ...parsed,
-              tip: prev.tip || "",
-              name: parsed.name || prev.name,
-            });
-          }
-        }
-      } catch (_) {
-        /* board optional */
-      }
     }
     return Array.from(byCode.values());
   }
@@ -575,12 +517,12 @@
   async function loadAllSectors() {
     if (!els.loadSectorsBtn) return;
     els.loadSectorsBtn.disabled = true;
-    if (els.sectorStatus) els.sectorStatus.textContent = "正在拉取各板块推荐池…";
+    if (els.sectorStatus) els.sectorStatus.textContent = "正在加载笔记点名票…";
     try {
       for (let i = 0; i < SECTORS.length; i++) {
         const sector = SECTORS[i];
         if (els.sectorStatus) {
-          els.sectorStatus.textContent = `加载板块 ${i + 1}/${SECTORS.length}：${sector.name}`;
+          els.sectorStatus.textContent = `加载 ${i + 1}/${SECTORS.length}：${sector.name}`;
         }
         state.sectorPools[sector.id] = await buildSectorPool(sector);
         renderSectorCards();
@@ -594,10 +536,10 @@
       state.universe = Array.from(universeMap.values()).slice(0, SCAN_POOL_CAP);
       if (els.sectorStatus) {
         els.sectorStatus.textContent =
-          "板块池已就绪 · 合计去重 " + state.universe.length + " 只（可点下方全员筛选）";
+          "笔记点名池已就绪 · 合计去重 " + state.universe.length + " 只（可点下方全员筛选）";
       }
       if (els.scanMeta) {
-        els.scanMeta.textContent = "池内 " + state.universe.length + " 只待筛选";
+        els.scanMeta.textContent = "笔记池 " + state.universe.length + " 只待筛选";
       }
     } catch (err) {
       if (els.sectorStatus) els.sectorStatus.textContent = "加载失败：" + (err?.message || String(err));
@@ -659,7 +601,7 @@
     if (!state.universe.length) {
       if (els.scanError) {
         els.scanError.hidden = false;
-        els.scanError.textContent = "请先加载板块推荐池。";
+        els.scanError.textContent = "请先加载笔记点名票。";
       }
       return;
     }

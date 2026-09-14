@@ -37,7 +37,7 @@
     <div class="hero-content">
       <div class="hero-brand">MIRANDA</div>
       <h1>板块观察台</h1>
-      <p>先梳理每个板块的推荐池，再只在这些票里做短期 / 中期打分排序。</p>
+      <p>只收录 09-14 笔记点名的票，再在池内做短期 / 中期打分排序。</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="#sectors">看板块池</a>
         <a class="btn btn-ghost" href="#scan">全员筛选</a>
@@ -48,7 +48,7 @@
   <main>
     <section class="section reveal honesty-strip" id="honesty">
       <div class="wrap">
-        <p><strong>独立入口：</strong>不混用均线 A/B/C、量能 V/Ctl/H、五哥试盘模板。流程是「板块主线 → 池内筛选」。观察分 ≠ 胜率。口径对齐 <a href="./notes/2026年9月14日学习.pdf" style="color:var(--teal-deep);text-decoration:underline;">09-14 学习 PDF</a> 与 <a href="./notes/teacher-speech.md" style="color:var(--teal-deep);text-decoration:underline;">teacher-speech.md</a>。</p>
+        <p><strong>独立入口：</strong>不混用均线 A/B/C、量能 V/Ctl/H、五哥试盘模板。流程是「笔记点名板块 → 池内筛选」。观察分 ≠ 胜率。池内<strong>只收</strong> <a href="./notes/2026年9月14日学习.pdf" style="color:var(--teal-deep);text-decoration:underline;">09-14 学习 PDF</a> 点名的票，不做东财扩展。摘要见 <a href="./notes/teacher-speech.md" style="color:var(--teal-deep);text-decoration:underline;">teacher-speech.md</a>。</p>
       </div>
     </section>
 
@@ -56,12 +56,12 @@
       <div class="wrap">
         <div class="section-label">01 / Sector Pools</div>
         <h2>各板块推荐股票</h2>
-        <p class="section-lead">每个板块先放核心观察票，再从东财对应板块成分扩展。先加载池子，再去做全员筛选。</p>
+        <p class="section-lead">每个板块只放 09-14 笔记点名的观察票。先加载池子，再去做全员筛选。</p>
 
         <div class="tool-panel coach-panel">
           <div class="coach-toolbar">
-            <button class="btn btn-primary" id="loadSectorsBtn" type="button">加载板块推荐池</button>
-            <span class="coach-meta" id="sectorStatus">首次加载约几十秒</span>
+            <button class="btn btn-primary" id="loadSectorsBtn" type="button">加载笔记点名票</button>
+            <span class="coach-meta" id="sectorStatus">只加载讲话点到名的公司</span>
           </div>
           <div class="sector-grid" id="sectorBoard"></div>
         </div>
@@ -72,12 +72,12 @@
       <div class="wrap">
         <div class="section-label">02 / Pool Screen</div>
         <h2>全员筛选（只扫板块池）</h2>
-        <p class="section-lead">把上面所有板块里的票去重后打分，按分数从高到低排列，并拆成短期 / 中期两栏。</p>
+        <p class="section-lead">把上面笔记点名票去重后打分，按分数从高到低排列，并拆成短期 / 中期两栏。</p>
 
         <div class="tool-panel coach-panel">
           <div class="coach-toolbar">
             <button class="btn btn-primary" id="boardScanBtn" type="button">开始全员筛选</button>
-            <span class="coach-meta" id="boardScanMeta">请先完成板块池加载</span>
+            <span class="coach-meta" id="boardScanMeta">请先加载笔记点名票</span>
           </div>
           <div class="status-box" id="boardScanStatus" hidden>准备筛选...</div>
           <div class="error-box" id="boardScanError" hidden></div>
