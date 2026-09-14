@@ -161,79 +161,79 @@
     return name && !/ST|退|^N|^C/i.test(name);
   }
 
-  function quoteUrl(secid) {
-    return (
-      "https://push2delay.eastmoney.com/api/qt/stock/get?secid=" +
-      secid +
-      "&fields=f43,f44,f45,f46,f57,f58,f60,f169,f170,f162,f167,f116,f117"
-    );
-  }
-
   function toSecId(code) {
     if (/^[6]\d{5}$/.test(code)) return "1." + code;
     if (/^(00|30)\d{4}$/.test(code)) return "0." + code;
     return null;
   }
 
-  async function fetchQuoteRow(code) {
-    const secid = toSecId(code);
-    if (!secid) return null;
-    try {
-      const data = await fetchJsonp(quoteUrl(secid), 12000);
-      const q = data?.data;
-      if (!q) return null;
-      const price = num(q.f43) / 100;
-      return {
-        code,
-        name: q.f58 || code,
-        price: price > 0 ? price : 0,
-        changePct: num(q.f170) / 100,
-        turnover: 0,
-        peDynamic: num(q.f162),
-        volumeRatio: 0,
-        mcap: num(q.f116),
-        floatMcap: num(q.f117),
-        pb: num(q.f167),
-        peTtm: num(q.f162),
-      };
-    } catch (_) {
-      return null;
-    }
+  function ulistUrl(secids) {
+    const fields = "f12,f14,f2,f3,f8,f9,f10,f20,f21,f23,f115";
+    return (
+      "https://push2delay.eastmoney.com/api/qt/ulist.np/get?fltt=2&invt=2&fields=" +
+      fields +
+      "&secids=" +
+      encodeURIComponent(secids.join(","))
+    );
   }
 
-  async function mapPool(items, concurrency, worker) {
-    const out = new Array(items.length);
-    let cursor = 0;
-    async function runOne() {
-      while (cursor < items.length) {
-        const i = cursor++;
-        out[i] = await worker(items[i], i);
+  function quoteUrl(secid) {
+    return (
+      "https://push2delay.eastmoney.com/api/qt/stock/get?secid=" +
+      secid +
+      "&fields=f43,f57,f58,f170,f162,f167,f116,f117"
+    );
+  }
+
+  function parseUlistRow(row) {
+    const code = String(row.f12 || "");
+    if (!/^\d{6}$/.test(code)) return null;
+    return {
+      code,
+      name: String(row.f14 || code),
+      price: num(row.f2),
+      changePct: num(row.f3),
+      turnover: num(row.f8),
+      peDynamic: num(row.f9),
+      volumeRatio: num(row.f10),
+      mcap: num(row.f20),
+      floatMcap: num(row.f21),
+      pb: num(row.f23),
+      peTtm: num(row.f115) || num(row.f9),
+    };
+  }
+
+  async function fetchUlistByCodes(codes) {
+    const secids = codes.map(toSecId).filter(Boolean);
+    const out = new Map();
+    const chunkSize = 40;
+    for (let i = 0; i < secids.length; i += chunkSize) {
+      const chunk = secids.slice(i, i + chunkSize);
+      try {
+        const data = await fetchJsonp(ulistUrl(chunk), 16000);
+        const diff = data?.data?.diff;
+        if (!Array.isArray(diff)) continue;
+        diff.forEach((row) => {
+          const parsed = parseUlistRow(row);
+          if (parsed) out.set(parsed.code, parsed);
+        });
+      } catch (_) {
+        /* chunk optional */
       }
     }
-    const n = Math.max(1, Math.min(concurrency, items.length || 1));
-    await Promise.all(Array.from({ length: n }, () => runOne()));
     return out;
   }
 
+  // 笔记点名池很小：只挡无行情，按短/中评分排序，避免“点了像没反应”
   function passesShort(s) {
     if (!s.price || s.price <= 0) return false;
-    if (s.mcap > 0 && s.mcap < 1e10) return false;
-    if (s.peTtm > 0 && s.peTtm > 80) return false;
-    if (s.pb > 0 && s.pb > 8) return false;
-    if (s.changePct < 0.5 || Math.abs(s.changePct) > 7) return false;
-    if (s.turnover > 0 && (s.turnover < 1 || s.turnover > 12)) return false;
-    if (s.volumeRatio > 0 && (s.volumeRatio < 1 || s.volumeRatio > 3.5)) return false;
+    if (Math.abs(s.changePct) > 11) return false;
     return true;
   }
 
   function passesMid(s) {
     if (!s.price || s.price <= 0) return false;
-    if (s.mcap > 0 && s.mcap < 3e10) return false;
-    if (s.peTtm > 0 && s.peTtm > 35) return false;
-    if (s.pb > 0 && s.pb > 4) return false;
-    if (s.changePct < -7 || Math.abs(s.changePct) > 7) return false;
-    if (s.turnover > 8) return false;
-    if (s.volumeRatio > 3) return false;
+    if (Math.abs(s.changePct) > 11) return false;
     return true;
   }
 
@@ -482,9 +482,11 @@
   }
 
   async function buildSectorPool(sector) {
+    const cores = sector.core || [];
+    const fresh = await fetchUlistByCodes(cores.map((c) => c.code));
     const byCode = new Map();
-    for (const item of sector.core || []) {
-      const quote = await fetchQuoteRow(item.code);
+    for (const item of cores) {
+      const quote = fresh.get(item.code);
       if (quote && isCleanName(quote.name)) {
         byCode.set(item.code, {
           ...quote,
@@ -613,12 +615,10 @@
     }
 
     try {
-      const refreshed = await mapPool(state.universe, 6, async (item) => {
-        // Prefer board fields already present; refresh quote for core accuracy when price missing.
-        if (item.price > 0 && (item.volumeRatio > 0 || item.turnover > 0 || item.mcap > 0)) {
-          return item;
-        }
-        const q = await fetchQuoteRow(item.code);
+      const codes = state.universe.map((s) => s.code);
+      const fresh = await fetchUlistByCodes(codes);
+      const refreshed = state.universe.map((item) => {
+        const q = fresh.get(item.code);
         if (!q) return item;
         return {
           ...item,
@@ -649,7 +649,11 @@
 
       renderRankList(els.shortList, shortRows, "短期画像下暂无过线标的。");
       renderRankList(els.midList, midRows, "中期画像下暂无过线标的。");
-      if (els.scanStatus) els.scanStatus.hidden = true;
+      if (els.scanStatus) {
+        els.scanStatus.hidden = false;
+        els.scanStatus.textContent =
+          "筛选完成 · 短期 " + shortRows.length + " · 中期 " + midRows.length;
+      }
       if (els.scanMeta) {
         els.scanMeta.textContent =
           "池内 " +
@@ -660,6 +664,8 @@
           midRows.length +
           " · 观察分≠胜率";
       }
+      const scanSection = document.getElementById("scan");
+      if (scanSection) scanSection.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
       if (els.scanStatus) els.scanStatus.hidden = true;
       if (els.scanError) {
