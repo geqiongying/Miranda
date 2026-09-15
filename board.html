@@ -52,32 +52,32 @@
       </div>
     </section>
 
-    <section class="section reveal" id="sectors">
+    <section class="section" id="sectors">
       <div class="wrap">
         <div class="section-label">01 / Sector Pools</div>
         <h2>各板块推荐股票</h2>
-        <p class="section-lead">每个板块只放 09-14 笔记点名的观察票。先加载池子，再去做全员筛选。</p>
+        <p class="section-lead">每个板块只放笔记点名的观察票（09-14 / 09-15）。打开页面会自动加载；也可手动再点下方按钮。</p>
 
         <div class="tool-panel coach-panel">
           <div class="coach-toolbar">
             <button class="btn btn-primary" id="loadSectorsBtn" type="button">加载笔记点名票</button>
-            <span class="coach-meta" id="sectorStatus">只加载讲话点到名的公司</span>
+            <span class="coach-meta" id="sectorStatus">正在自动加载…</span>
           </div>
           <div class="sector-grid" id="sectorBoard"></div>
         </div>
       </div>
     </section>
 
-    <section class="section reveal" id="scan">
+    <section class="section" id="scan">
       <div class="wrap">
         <div class="section-label">02 / Pool Screen</div>
         <h2>全员筛选（只扫板块池）</h2>
-        <p class="section-lead">把上面笔记点名票去重后打分，按分数从高到低排列，并拆成短期 / 中期两栏。</p>
+        <p class="section-lead">把上面笔记点名票去重后打分，按分数从高到低排列，并拆成短期 / 中期两栏。结果会出现在本区块下方。</p>
 
         <div class="tool-panel coach-panel">
           <div class="coach-toolbar">
             <button class="btn btn-primary" id="boardScanBtn" type="button">开始全员筛选</button>
-            <span class="coach-meta" id="boardScanMeta">请先加载笔记点名票</span>
+            <span class="coach-meta" id="boardScanMeta">等待笔记池加载</span>
           </div>
           <div class="status-box" id="boardScanStatus" hidden>准备筛选...</div>
           <div class="error-box" id="boardScanError" hidden></div>
@@ -86,12 +86,12 @@
             <div class="horizon-col">
               <h3>短期观察（约 1–4 周）</h3>
               <p class="muted-note">对笔记点名票按短期画像打分排序（有行情即可上榜）。</p>
-              <div class="picks-grid" id="shortRankList"></div>
+              <div class="picks-grid" id="shortRankList"><p class="empty-picks">加载笔记池后，点「开始全员筛选」。</p></div>
             </div>
             <div class="horizon-col">
               <h3>中期观察（约 3–12 月）</h3>
               <p class="muted-note">对同一批点名票按中期画像打分排序（有行情即可上榜）。</p>
-              <div class="picks-grid" id="midRankList"></div>
+              <div class="picks-grid" id="midRankList"><p class="empty-picks">加载笔记池后，点「开始全员筛选」。</p></div>
             </div>
           </div>
         </div>
