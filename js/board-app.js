@@ -1,5 +1,5 @@
 (() => {
-  // 只收录老师笔记点名票（09-14 化工资源液冷光通信存储 + 09-15 MLCC/ABF），不做东财板块扩展
+  // 只收录老师笔记点名票（09-14 + 09-15 学习 / 学习2），不做东财板块扩展
   const SECTORS = [
     {
       id: "fertilizer",
@@ -134,7 +134,7 @@
     {
       id: "abf",
       name: "ABF 膜 / 载板",
-      thesis: "高端载板核心材料：味之素垄断到约 2030；国产替代看兴森、深南；莲花偏弹性概念。",
+      thesis: "高端载板核心材料：味之素垄断到约 2030；国产替代看兴森、深南；莲花偏弹性概念。来源 09-15 学习。",
       preferredHorizon: "both",
       core: [
         { code: "002436", tip: "载板领先 · 英伟达/华为链（转写新生）" },
@@ -142,9 +142,33 @@
         { code: "600186", tip: "收购国产 ABF · 弹性/偏妖" },
       ],
     },
+    {
+      id: "ptfe",
+      name: "PTFE / M10 材料",
+      thesis: "AI 板材升级到 M10：PTFE（聚四氟乙烯）是核心树脂；讲话点名昊华、肯特，东岳仅捎带。勿追高，等二次叙事。来源 09-15 学习2。",
+      preferredHorizon: "both",
+      core: [
+        { code: "600378", tip: "昊华 · 氟化工龙头（转写浩华）" },
+        { code: "301591", tip: "肯特股份 · PTFE 相关" },
+      ],
+    },
+    {
+      id: "aipcb",
+      name: "AI PCB",
+      thesis: "K 型分化：只盯 AI 相关高阶板，不看传统 FR4 消费板。材料看生益，工艺 MSAP 看沪电/景旺/鹏鼎，成品看深南/胜宏。已炒一轮，操作勿追高。来源 09-15 学习2。",
+      preferredHorizon: "both",
+      core: [
+        { code: "600183", tip: "生益科技 · 覆铜板（转写生意）" },
+        { code: "002463", tip: "沪电 · MSAP（转写铜底/万科）" },
+        { code: "603228", tip: "景旺 · MSAP" },
+        { code: "002938", tip: "鹏鼎控股 · MSAP" },
+        { code: "002916", tip: "深南电路 · 成品板（转写生产电路）" },
+        { code: "300476", tip: "胜宏科技 · AI 高阶板（转写盛宏）" },
+      ],
+    },
   ];
 
-  const SCAN_POOL_CAP = 80;
+  const SCAN_POOL_CAP = 90;
 
   function fetchJsonp(url, timeoutMs = 14000) {
     return new Promise((resolve, reject) => {
