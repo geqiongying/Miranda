@@ -650,8 +650,10 @@
     if (!state.universe.length) {
       if (els.scanError) {
         els.scanError.hidden = false;
-        els.scanError.textContent = "请先加载笔记点名票。";
+        els.scanError.textContent = "笔记池还没好，请稍等自动加载完成，或先点上方「加载笔记点名票」。";
       }
+      const sectors = document.getElementById("sectors");
+      if (sectors) sectors.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
     els.scanBtn.disabled = true;
@@ -660,6 +662,8 @@
       els.scanStatus.hidden = false;
       els.scanStatus.textContent = "正在刷新池内行情并打分…";
     }
+    renderRankList(els.shortList, [], "正在筛选短期…");
+    renderRankList(els.midList, [], "正在筛选中期…");
 
     try {
       const codes = state.universe.map((s) => s.code);
@@ -699,7 +703,7 @@
       if (els.scanStatus) {
         els.scanStatus.hidden = false;
         els.scanStatus.textContent =
-          "筛选完成 · 短期 " + shortRows.length + " · 中期 " + midRows.length;
+          "筛选完成 · 短期 " + shortRows.length + " · 中期 " + midRows.length + " · 结果在下方两栏";
       }
       if (els.scanMeta) {
         els.scanMeta.textContent =
@@ -711,8 +715,8 @@
           midRows.length +
           " · 观察分≠胜率";
       }
-      const scanSection = document.getElementById("scan");
-      if (scanSection) scanSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      const resultsAnchor = document.getElementById("boardScanStatus") || document.getElementById("scan");
+      if (resultsAnchor) resultsAnchor.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
       if (els.scanStatus) els.scanStatus.hidden = true;
       if (els.scanError) {
@@ -726,6 +730,8 @@
   renderSectorCards();
   if (els.loadSectorsBtn) els.loadSectorsBtn.addEventListener("click", loadAllSectors);
   if (els.scanBtn) els.scanBtn.addEventListener("click", runPoolScan);
+  // 进页自动加载，避免「全员筛选像消失/没反应」
+  loadAllSectors();
 
   const revealEls = document.querySelectorAll(".reveal");
   if (revealEls.length && "IntersectionObserver" in window) {
