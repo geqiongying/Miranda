@@ -14,7 +14,8 @@ Miranda 的私人 A 股学习站：**均线手记**、**量能操盘台**、**�
 | 均线手记 | `ma.html` | 买点 A/B/C、卖点 A/B；`data-engine="ma"` |
 | 量能操盘台 | `coach.html` | 买点 V/Ctl/H、卖点 V；`data-engine="volume"` |
 | 五哥笔记台 | `wuge.html` | 试盘线 / 龙头近似；`data-engine="wuge"` |
-| 板块观察台 | `board.html` | 板块推荐池 → 池内短/中期打分 |
+| 板块观察台 | `board.html` | 板块推荐池 → 池内短/中期打分；点股票进三逻辑台 |
+| 三逻辑打分台 | `desk.html` | 单票分栏跑均线 / 量能 / 五哥（互不混用） |
 | 微信推送 | `push.html` | 收盘盯盘、每日观察菜单和晚饭菜单通过 PushPlus 发到微信 |
 
 ## 板块观察台
