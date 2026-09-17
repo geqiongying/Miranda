@@ -1943,10 +1943,13 @@ body.embed-mode #coachForm,
 body.embed-mode .coach-compose,
 body.embed-mode .section-lead,
 body.embed-mode h2,
-body.embed-mode #lab .tool-panel:nth-of-type(2),
+body.embed-mode .lab-index-panel,
 body.embed-mode #idxTabs,
 body.embed-mode #idxLoading,
-body.embed-mode #idxError {
+body.embed-mode #idxError,
+body.embed-mode #idxChartCanvas,
+body.embed-mode #idxMAValues,
+body.embed-mode #idxPositionAlert {
   display: none !important;
 }
 
@@ -1956,12 +1959,13 @@ body.embed-mode .coach-messages {
   margin-bottom: 0.5rem;
 }
 
-body.embed-mode #loadingStatus,
-body.embed-mode #errorMsg,
-body.embed-mode #analysisResult,
-body.embed-mode #reviewLoading,
-body.embed-mode #reviewError,
-body.embed-mode #reviewResult,
+/* Keep score panels visible when JS clears [hidden]; don't override hidden=true */
+body.embed-mode #loadingStatus:not([hidden]),
+body.embed-mode #errorMsg:not([hidden]),
+body.embed-mode #analysisResult:not([hidden]),
+body.embed-mode #reviewLoading:not([hidden]),
+body.embed-mode #reviewError:not([hidden]),
+body.embed-mode #reviewResult:not([hidden]),
 body.embed-mode .coach-feed {
   display: block !important;
 }

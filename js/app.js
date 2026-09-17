@@ -2248,9 +2248,10 @@
   const picksBtn = document.getElementById("picksBtn");
   if (picksBtn) picksBtn.addEventListener("click", runPicksScan);
 
-  // Index chart only if legacy lab exists
+  // Index chart only if legacy lab exists (skip in desk embed — stock score only)
   const refreshIdx = document.getElementById("refreshIdx");
-  if (refreshIdx && document.getElementById("idxChartCanvas")) {
+  const embedBoot = new URLSearchParams(window.location.search).get("embed") === "1";
+  if (!embedBoot && refreshIdx && document.getElementById("idxChartCanvas")) {
     document.querySelectorAll("#idxTabs [data-idx]").forEach((btn) => {
       btn.addEventListener("click", () => {
         currentIdx = btn.dataset.idx;
