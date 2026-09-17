@@ -478,8 +478,16 @@
             .map((s) => {
               const chg = (s.changePct >= 0 ? "+" : "") + s.changePct.toFixed(2) + "%";
               const cls = s.changePct >= 0 ? "up" : "down";
+              const deskHref =
+                "./desk.html?code=" +
+                encodeURIComponent(s.code) +
+                "&name=" +
+                encodeURIComponent(s.name || s.code);
               return (
                 '<li class="sector-stock">' +
+                '<a class="sector-stock-link" href="' +
+                deskHref +
+                '">' +
                 "<div><strong>" +
                 escapeHtml(s.name) +
                 "</strong> " +
@@ -487,7 +495,7 @@
                 '<span class="muted"> ' +
                 escapeHtml(s.code) +
                 (s.tip ? " · " + escapeHtml(s.tip) : "") +
-                "</span></div>" +
+                '</span><span class="sector-go">三逻辑打分 →</span></div>' +
                 '<div class="sector-px ' +
                 cls +
                 '">' +
@@ -495,6 +503,7 @@
                 " <em>" +
                 chg +
                 "</em></div>" +
+                "</a>" +
                 "</li>"
               );
             })
@@ -607,8 +616,16 @@
         const sector = SECTORS.find((s) => s.id === r.sectorId);
         const chg = (r.changePct >= 0 ? "+" : "") + r.changePct.toFixed(2) + "%";
         const cls = r.changePct >= 0 ? "up" : "down";
+        const deskHref =
+          "./desk.html?code=" +
+          encodeURIComponent(r.code) +
+          "&name=" +
+          encodeURIComponent(r.name || r.code);
         return (
           '<article class="pick-card board-rank-card">' +
+          '<a class="board-rank-link" href="' +
+          deskHref +
+          '">' +
           '<div class="pick-top">' +
           "<div>" +
           '<p class="pick-code">' +
@@ -639,6 +656,8 @@
           '<p class="pick-why">' +
           escapeHtml((r.signals || []).slice(0, 3).join("；")) +
           "</p>" +
+          '<p class="sector-go">点进三逻辑打分 →</p>' +
+          "</a>" +
           "</article>"
         );
       })

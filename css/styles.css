@@ -1760,3 +1760,209 @@ tr:last-child td {
   width: 100%;
 }
 
+/* Board stock → desk */
+.sector-stock-link,
+.board-rank-link {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+  color: inherit;
+  text-decoration: none;
+  width: 100%;
+}
+
+.sector-stock-link:hover,
+.board-rank-link:hover {
+  color: var(--teal-deep);
+}
+
+.sector-go {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--teal-deep);
+}
+
+.board-rank-link .sector-go {
+  margin-top: 0.45rem;
+}
+
+/* Triple-score desk */
+.desk-hero {
+  padding: 5.5rem 0 1.5rem;
+  background:
+    linear-gradient(180deg, rgba(238, 244, 240, 0.2), rgba(223, 234, 227, 0.85)),
+    radial-gradient(900px 420px at 0% 0%, rgba(15, 122, 100, 0.12), transparent 60%);
+  border-bottom: 1px solid var(--line);
+}
+
+.desk-hero-inner h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  margin: 0.35rem 0 0.5rem;
+}
+
+.desk-lead {
+  max-width: 42rem;
+  color: var(--ink-soft);
+  margin-bottom: 0.6rem;
+}
+
+.desk-code-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  align-items: center;
+}
+
+.desk-code-row input {
+  min-width: min(16rem, 100%);
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font: inherit;
+  background: var(--white);
+}
+
+.desk-main {
+  padding: 1.25rem 0 3rem;
+}
+
+.desk-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.desk-pane {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-height: 72vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.desk-pane-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(15, 122, 100, 0.04);
+}
+
+.desk-pane-head h2 {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+}
+
+.desk-open {
+  font-size: 0.8rem;
+  color: var(--teal-deep);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.desk-frame {
+  border: 0;
+  width: 100%;
+  flex: 1;
+  min-height: 64vh;
+  background: var(--paper);
+}
+
+@media (max-width: 980px) {
+  .desk-grid {
+    grid-template-columns: 1fr;
+  }
+  .desk-pane,
+  .desk-frame {
+    min-height: 70vh;
+  }
+}
+
+/* Engine pages inside desk iframes */
+body.embed-mode .site-nav,
+body.embed-mode .hero,
+body.embed-mode .site-footer,
+body.embed-mode .honesty-strip,
+body.embed-mode .section-label,
+body.embed-mode .template-grid,
+body.embed-mode .picks-board,
+body.embed-mode #picks,
+body.embed-mode .coach-toolbar,
+body.embed-mode .tool-hints,
+body.embed-mode .history-row,
+body.embed-mode .hold-status {
+  display: none !important;
+}
+
+body.embed-mode {
+  background: var(--paper);
+}
+
+body.embed-mode main {
+  padding: 0;
+}
+
+body.embed-mode .section {
+  padding: 0.75rem 0 1rem;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+body.embed-mode .section:not(#lab):not(#ask):not(#review) {
+  display: none !important;
+}
+
+body.embed-mode[data-engine="ma"] #review {
+  display: none !important;
+}
+
+body.embed-mode .wrap {
+  max-width: none;
+  padding: 0.75rem;
+}
+
+body.embed-mode .tool-panel,
+body.embed-mode .coach-panel {
+  box-shadow: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+body.embed-mode .tool-row input,
+body.embed-mode .tool-row button,
+body.embed-mode #coachForm,
+body.embed-mode .coach-compose,
+body.embed-mode .section-lead,
+body.embed-mode h2,
+body.embed-mode #lab .tool-panel:nth-of-type(2),
+body.embed-mode #idxTabs,
+body.embed-mode #idxLoading,
+body.embed-mode #idxError {
+  display: none !important;
+}
+
+body.embed-mode .coach-messages {
+  max-height: 8rem;
+  overflow: auto;
+  margin-bottom: 0.5rem;
+}
+
+body.embed-mode #loadingStatus,
+body.embed-mode #errorMsg,
+body.embed-mode #analysisResult,
+body.embed-mode #reviewLoading,
+body.embed-mode #reviewError,
+body.embed-mode #reviewResult,
+body.embed-mode .coach-feed {
+  display: block !important;
+}
+

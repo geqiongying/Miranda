@@ -500,6 +500,34 @@
     });
   }
 
+  function bootFromQuery() {
+    const params = new URLSearchParams(window.location.search);
+    const code = (params.get("code") || "").trim();
+    const embed = params.get("embed") === "1";
+    if (embed) {
+      document.body.classList.add("embed-mode");
+      document.querySelectorAll(".reveal").forEach((el) => el.classList.add("is-visible"));
+    }
+    if (!code) return;
+    const m = code.match(/\d{6}/);
+    if (!m) return;
+    const clean = m[0];
+    if (ENGINE === "ma" && stockInputEl) {
+      stockInputEl.value = clean;
+      const lab = document.getElementById("lab");
+      if (lab) lab.scrollIntoView({ behavior: "auto", block: "start" });
+      setTimeout(() => analyzeStock(), embed ? 80 : 200);
+      return;
+    }
+    const reviewInput = document.getElementById("reviewInput");
+    if (reviewInput) {
+      reviewInput.value = `${clean} 现在适合买入或卖出吗？`;
+      const ask = document.getElementById("ask") || document.getElementById("review");
+      if (ask) ask.scrollIntoView({ behavior: "auto", block: "start" });
+      setTimeout(() => runReview({ preset: reviewInput.value, silentUser: true }), embed ? 80 : 200);
+    }
+  }
+
   // ---------- Review engine (knowledge embedded, not displayed as docs) ----------
   // Internal playbook reference (Yange framework): style -> pool -> structure ->
   // key level -> position sizing -> review. MA5/20/99/128/225; day/120/15/5 roles;
@@ -2238,5 +2266,7 @@
     });
     setTimeout(() => fetchIdxData("000001"), 400);
   }
+
+  bootFromQuery();
 })();
 

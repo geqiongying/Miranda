@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MIRANDA · 三逻辑打分台</title>
+  <meta name="description" content="对单只股票分别用均线、量能、五哥逻辑打分，三套引擎互不混用。" />
+  <meta name="author" content="Miranda Ge" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body data-engine="desk">
+  <nav class="site-nav" id="siteNav">
+    <a class="brand-mark" href="./index.html">MIRANDA</a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="siteNavLinks" aria-label="打开菜单">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="siteNavLinks">
+      <li><a href="./board.html">板块观察</a></li>
+      <li><a href="./ma.html">均线</a></li>
+      <li><a href="./coach.html">量能</a></li>
+      <li><a href="./wuge.html">五哥</a></li>
+    </ul>
+  </nav>
+
+  <header class="desk-hero" id="top">
+    <div class="wrap desk-hero-inner">
+      <p class="portal-kicker">Logic A · B · C · 分轨</p>
+      <h1 id="deskTitle">三逻辑打分台</h1>
+      <p id="deskLead" class="desk-lead">从板块池点进来的票，会在下面三栏分别用均线 / 量能 / 五哥打分，互不混用。</p>
+      <p class="muted-note">观察分 / 契合度 ≠ 胜率。仅供学习，不构成投资建议。</p>
+      <div class="desk-code-row">
+        <input id="deskCodeInput" type="text" maxlength="12" placeholder="股票代码，如 600096" autocomplete="off" />
+        <button class="btn btn-primary" id="deskLoadBtn" type="button">重新打分</button>
+        <a class="btn btn-ghost" id="deskBackBoard" href="./board.html">回板块台</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="desk-main">
+    <div class="wrap desk-grid" id="deskGrid">
+      <section class="desk-pane" data-engine-pane="ma">
+        <header class="desk-pane-head">
+          <div>
+            <p class="portal-kicker">Logic A</p>
+            <h2>均线逻辑</h2>
+          </div>
+          <a class="desk-open" id="deskOpenMa" href="./ma.html" target="_blank" rel="noopener">完整均线台 ↗</a>
+        </header>
+        <iframe class="desk-frame" id="frameMa" title="均线打分" loading="lazy"></iframe>
+      </section>
+      <section class="desk-pane" data-engine-pane="volume">
+        <header class="desk-pane-head">
+          <div>
+            <p class="portal-kicker">Logic B</p>
+            <h2>量能逻辑</h2>
+          </div>
+          <a class="desk-open" id="deskOpenCoach" href="./coach.html" target="_blank" rel="noopener">完整量能台 ↗</a>
+        </header>
+        <iframe class="desk-frame" id="frameCoach" title="量能打分" loading="lazy"></iframe>
+      </section>
+      <section class="desk-pane" data-engine-pane="wuge">
+        <header class="desk-pane-head">
+          <div>
+            <p class="portal-kicker">Logic C</p>
+            <h2>五哥逻辑</h2>
+          </div>
+          <a class="desk-open" id="deskOpenWuge" href="./wuge.html" target="_blank" rel="noopener">完整五哥台 ↗</a>
+        </header>
+        <iframe class="desk-frame" id="frameWuge" title="五哥打分" loading="lazy"></iframe>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="brand-mark">MIRANDA</div>
+      <p>三逻辑打分台 · 引擎分轨 · <a href="./board.html" style="text-decoration:underline;">回板块观察</a></p>
+      <p class="disclaimer">仅供学习参考，不构成投资建议。不承诺任何成功率。</p>
+    </div>
+  </footer>
+
+  <script src="./js/nav.js"></script>
+  <script src="./js/desk-app.js"></script>
+</body>
+</html>
