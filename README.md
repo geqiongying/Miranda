@@ -24,7 +24,7 @@ Miranda 的私人 A 股学习站：**均线手记**、**量能操盘台**、**�
 2. 再对池内股票做**全员筛选**，分数从高到低
 3. 结果拆成 **短期 / 中期** 两栏
 
-老师发言稿：`notes/2026年9月14日学习.pdf`、`notes/2026年9月15日学习.pdf`、`notes/2026年9月15日学习2.pdf`  
+老师发言稿：`notes/2026年9月14日学习.pdf`、`notes/2026年9月15日学习.pdf`、`notes/2026年9月15日学习2.pdf`、`notes/2026年9月21日学习.pdf`  
 要点摘要：`notes/teacher-speech.md`  
 理论骨架：`notes/sector-theory.md`
 

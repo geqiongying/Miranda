@@ -16,6 +16,7 @@
 | `notes/2026年9月14日学习.pdf` | 化工 / 资源 / 液冷 / 光通信 / 存储 |
 | `notes/2026年9月15日学习.pdf` | MLCC / ABF |
 | `notes/2026年9月15日学习2.pdf` | AI PCB / PTFE·M10 |
+| `notes/2026年9月21日学习.pdf` | 新能源（储能 / 光伏 / 风电 / 电网） |
 
 摘要：`notes/teacher-speech.md`
 
