@@ -55,11 +55,31 @@ def format_section(profile: ScreeningProfile, ranked: list[ScoredStock], limit: 
     return "\n".join(lines)
 
 
+def fallback_menu(today: str, error: str) -> str:
+    return "\n".join(
+        [
+            f"## Miranda 每日观察菜单（{today}）",
+            "",
+            "今日行情接口不稳定，观察名单暂缺，所以微信这条没有正常名单。",
+            "请打开网站量能台 / 五哥台自行扫描。收盘盯盘不受影响。",
+            f"技术原因：{error}",
+            "",
+        ]
+    )
+
+
 def build_menu(limit: int, max_pages: int) -> str:
     today = dt.date.today().isoformat()
-    stocks = fetch_a_share_universe(max_pages=max(max_pages, 1))
-    excluded = parse_excluded_codes(None)
+    try:
+        stocks = fetch_a_share_universe(max_pages=max(max_pages, 1))
+    except Exception as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return fallback_menu(today, str(exc))
 
+    if not stocks:
+        return fallback_menu(today, "公开行情列表为空")
+
+    excluded = parse_excluded_codes(None)
     parts = [
         f"## Miranda 每日观察菜单（{today}）",
         "",
@@ -95,11 +115,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    try:
-        content = build_menu(max(args.limit, 1), args.max_pages)
-    except RuntimeError as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        return 1
+    content = build_menu(max(args.limit, 1), args.max_pages)
 
     print(content)
 

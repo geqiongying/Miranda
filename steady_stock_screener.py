@@ -23,11 +23,20 @@ EASTMONEY_LIST_HOSTS = (
     "https://push2delay.eastmoney.com/api/qt/clist/get",
     "https://push2.eastmoney.com/api/qt/clist/get",
     "https://82.push2.eastmoney.com/api/qt/clist/get",
+    "https://79.push2.eastmoney.com/api/qt/clist/get",
+    "https://88.push2.eastmoney.com/api/qt/clist/get",
 )
+SINA_LIST_URL = "https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.getHQNodeData"
 DEFAULT_EXCLUDED_CODES = {"688027", "002214", "300604"}
 DEFAULT_PAGE_SIZE = 100
 DEFAULT_MAX_PAGES = 10
-MAX_FETCH_RETRIES = 3
+MAX_FETCH_RETRIES = 2
+FETCH_ERRORS = (
+    urllib.error.URLError,
+    json.JSONDecodeError,
+    TimeoutError,
+    OSError,
+)
 
 
 @dataclass(frozen=True)
@@ -122,6 +131,17 @@ def fetch_a_share_universe(
     page_size: int = DEFAULT_PAGE_SIZE,
     max_pages: int = DEFAULT_MAX_PAGES,
 ) -> list[Stock]:
+    try:
+        return fetch_eastmoney_universe(page_size=page_size, max_pages=max_pages)
+    except RuntimeError as exc:
+        print(f"warning: Eastmoney list failed ({exc}); falling back to Sina.", file=sys.stderr)
+        return fetch_sina_universe(page_size=page_size, max_pages=max_pages)
+
+
+def fetch_eastmoney_universe(
+    page_size: int = DEFAULT_PAGE_SIZE,
+    max_pages: int = DEFAULT_MAX_PAGES,
+) -> list[Stock]:
     stocks: list[Stock] = []
     page = 1
     total = None
@@ -129,11 +149,11 @@ def fetch_a_share_universe(
     while page <= max_pages and (total is None or len(stocks) < total):
         try:
             payload = fetch_page(page, page_size)
-        except RuntimeError as exc:
+        except Exception as exc:
             if stocks:
                 print(f"warning: {exc}; using {len(stocks)} stocks already fetched.", file=sys.stderr)
                 break
-            raise
+            raise RuntimeError(str(exc)) from exc
         data = payload.get("data") or {}
         diff = data.get("diff") or []
         if total is None:
@@ -144,7 +164,80 @@ def fetch_a_share_universe(
         stocks.extend(parse_stock(item) for item in diff)
         page += 1
 
+    if not stocks:
+        raise RuntimeError("Eastmoney returned no stocks")
     return stocks
+
+
+def fetch_sina_universe(
+    page_size: int = DEFAULT_PAGE_SIZE,
+    max_pages: int = DEFAULT_MAX_PAGES,
+) -> list[Stock]:
+    stocks: list[Stock] = []
+    for page in range(1, max(max_pages, 1) + 1):
+        try:
+            rows = fetch_sina_page(page, page_size)
+        except Exception as exc:
+            if stocks:
+                print(f"warning: {exc}; using {len(stocks)} Sina stocks already fetched.", file=sys.stderr)
+                break
+            raise RuntimeError(str(exc)) from exc
+        if not rows:
+            break
+        stocks.extend(parse_sina_stock(item) for item in rows)
+    if not stocks:
+        raise RuntimeError("Sina returned no stocks")
+    return stocks
+
+
+def fetch_sina_page(page: int, page_size: int) -> list[dict[str, Any]]:
+    params = {
+        "page": page,
+        "num": page_size,
+        "sort": "mktcap",
+        "asc": 0,
+        "node": "hs_a",
+    }
+    url = f"{SINA_LIST_URL}?{urllib.parse.urlencode(params)}"
+    last_error: Exception | None = None
+    for attempt in range(1, MAX_FETCH_RETRIES + 1):
+        request = urllib.request.Request(
+            url,
+            headers={
+                "Referer": "https://finance.sina.com.cn/",
+                "User-Agent": "Mozilla/5.0",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                payload = json.loads(response.read().decode("utf-8", errors="replace"))
+            if payload in (None, ""):
+                return []
+            if not isinstance(payload, list):
+                raise json.JSONDecodeError("expected list", str(payload), 0)
+            return payload
+        except FETCH_ERRORS as exc:
+            last_error = exc
+            if attempt < MAX_FETCH_RETRIES:
+                time.sleep(2 ** (attempt - 1))
+    raise RuntimeError(f"Failed to fetch Sina stock list page {page}: {last_error}")
+
+
+def parse_sina_stock(item: dict[str, Any]) -> Stock:
+    # Sina mktcap / nmc are in 万元.
+    return Stock(
+        code=str(item.get("code") or ""),
+        name=str(item.get("name") or ""),
+        price=as_float(item.get("trade")),
+        change_percent=as_float(item.get("changepercent")),
+        turnover_rate=as_float(item.get("turnoverratio")),
+        volume_ratio=1.2,
+        pe_dynamic=as_float(item.get("per")),
+        pe_ttm=as_float(item.get("per")),
+        pb=as_float(item.get("pb")),
+        total_market_cap=as_float(item.get("mktcap")) * 10_000,
+        float_market_cap=as_float(item.get("nmc")) * 10_000,
+    )
 
 
 def fetch_page(page: int, page_size: int) -> dict[str, Any]:
@@ -164,21 +257,21 @@ def fetch_page(page: int, page_size: int) -> dict[str, Any]:
     last_error: Exception | None = None
 
     for host in EASTMONEY_LIST_HOSTS:
-        request = urllib.request.Request(
-            f"{host}?{query}",
-            headers={
-                "Referer": "https://quote.eastmoney.com/",
-                "User-Agent": "Mozilla/5.0",
-            },
-        )
         for attempt in range(1, MAX_FETCH_RETRIES + 1):
+            request = urllib.request.Request(
+                f"{host}?{query}",
+                headers={
+                    "Referer": "https://quote.eastmoney.com/",
+                    "User-Agent": "Mozilla/5.0",
+                },
+            )
             try:
                 with urllib.request.urlopen(request, timeout=15) as response:
                     payload = json.load(response)
                 if not isinstance(payload, dict):
                     raise json.JSONDecodeError("expected object", str(payload), 0)
                 return payload
-            except (urllib.error.URLError, json.JSONDecodeError) as exc:
+            except FETCH_ERRORS as exc:
                 last_error = exc
                 if attempt < MAX_FETCH_RETRIES:
                     time.sleep(2 ** (attempt - 1))
